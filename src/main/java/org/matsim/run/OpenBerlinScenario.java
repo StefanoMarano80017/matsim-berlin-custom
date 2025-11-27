@@ -12,15 +12,14 @@ import org.matsim.contrib.bicycle.BicycleConfigGroup;
 import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculator;
 import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import org.matsim.contrib.bicycle.BicycleTravelTime;
-import org.matsim.contrib.emissions.HbefaRoadTypeMapping;
-import org.matsim.contrib.emissions.OsmHbefaMapping;
-import org.matsim.contrib.emissions.utils.EmissionsConfigGroup;
 import org.matsim.contrib.ev.EvConfigGroup; // Import del gruppo di configurazione EV
 import org.matsim.contrib.ev.EvModule; // Import del Modulo EV
+import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
+import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationDefaultImpl;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
-import org.matsim.core.config.groups.VspExperimentalConfigGroup;
+import org.matsim.core.config.groups.ReplanningConfigGroup;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.controler.OutputDirectoryHierarchy;
@@ -36,29 +35,22 @@ import org.matsim.simwrapper.SimWrapperModule;
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 
-// Classi custom 
-import org.matsim.CustomMonitor.EvGenerator;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-import java.io.IOException;
-
-import org.matsim.CustomMonitor.ChargingHubGenerator;
-import org.matsim.CustomMonitor.EvFleetManager;
-import org.matsim.CustomMonitor.EvHubOccupancyMonitor;
-import org.matsim.CustomMonitor.EvSocMonitor;
+import org.matsim.CustomMonitor.ChargingHub.HubManager;
+import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
+import org.matsim.CustomMonitor.EVfleet.EvSocMonitor;
 
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
 
+	private HubManager hubManager;
+	private ChargingInfrastructureSpecification infraSpec;
+
 	public static final String VERSION = "6.4";
 	public static final String CRS = "EPSG:25832";
-
-	//	To decrypt hbefa input files set MATSIM_DECRYPTION_PASSWORD as environment variable. ask VSP for access.
-	private static final String HBEFA_2020_PATH = "https://svn.vsp.tu-berlin.de/repos/public-svn/3507bb3997e5657ab9da76dbedbb13c9b5991d3e/0e73947443d68f95202b71a156b337f7f71604ae/";
-	private static final String HBEFA_FILE_COLD_DETAILED = HBEFA_2020_PATH + "82t7b02rc0rji2kmsahfwp933u2rfjlkhfpi2u9r20.enc";
-	private static final String HBEFA_FILE_WARM_DETAILED = HBEFA_2020_PATH + "944637571c833ddcf1d0dfcccb59838509f397e6.enc";
-	private static final String HBEFA_FILE_COLD_AVERAGE = HBEFA_2020_PATH + "r9230ru2n209r30u2fn0c9rn20n2rujkhkjhoewt84202.enc" ;
-	private static final String HBEFA_FILE_WARM_AVERAGE = HBEFA_2020_PATH + "7eff8f308633df1b8ac4d06d05180dd0c5fdf577.enc";
 
 	@CommandLine.Mixin
 	private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
@@ -83,8 +75,23 @@ public class OpenBerlinScenario extends MATSimApplication {
 	@Override
 	protected Config prepareConfig(Config config) {
 
+		Path csvPath_hub = Path.of("input/CustomInput/charging_hub.csv");
+		if (!Files.exists(csvPath_hub)) {
+			throw new RuntimeException("File HUB non trovato: " + csvPath_hub.toAbsolutePath());
+		}
+
+		Path csvPath_ev = Path.of("input/CustomInput/ev-dataset.csv");
+		if (!Files.exists(csvPath_ev)) {
+			throw new RuntimeException("File EV non trovato: " + csvPath_ev.toAbsolutePath());
+		}
+
 		SimWrapperConfigGroup sw = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
 
+		// --- Creazione EV config---
+		EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
+		evConfig.chargersFile = "fake_chargers.xml"; // Placeholder, i charger saranno gestiti dal HubManager
+
+		// --- Configurazione sample se presente ---
 		if (sample.isSet()) {
 			double sampleSize = sample.getSample();
 
@@ -100,13 +107,12 @@ public class OpenBerlinScenario extends MATSimApplication {
 			config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
 		}
 
-		// --- MODIFICA EV 1: Aggiungi Configurazione EV (Senza file esterni) ---
-        ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
-		
-		// 1. Forza l'esecuzione singola (Solo 1 mobsim, niente loop)
-		config.controller().setLastIteration(0);
-		config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
-
+		// --- Aggiunge strategia fittizia ChangeExpBeta per VSP ---
+		ReplanningConfigGroup.StrategySettings dummyStrategy = new ReplanningConfigGroup.StrategySettings();
+		dummyStrategy.setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta);
+		dummyStrategy.setWeight(0.0); // mai eseguita
+		dummyStrategy.setSubpopulation("person"); // subpopulation fittizia
+		config.replanning().addStrategySettings(dummyStrategy);
 
 		config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 
@@ -114,46 +120,29 @@ public class OpenBerlinScenario extends MATSimApplication {
 		RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
 		Activities.addScoringParams(config, true);
 
-		// ... Blocco strategie commentato (lasciato come nel codice fornito) ...
+		// Forza l'esecuzione singola (Solo 1 mobsim, niente loop)
+		config.controller().setLastIteration(0);
+		config.controller().setOverwriteFileSetting(OutputDirectoryHierarchy.OverwriteFileSetting.deleteDirectoryIfExists);
 
-		// Need to switch to warning for best score
-		if (planSelector.equals(DefaultPlanStrategiesModule.DefaultSelector.BestScore)) {
-			config.vspExperimental().setVspDefaultsCheckingLevel(VspExperimentalConfigGroup.VspDefaultsCheckingLevel.warn);
-		}
-
+		// --- Aggiungi Configurazione EV (file esterni) ---
+        ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
+		
 		// Bicycle config must be present
 		ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
-
-		// Add emissions configuration
-		EmissionsConfigGroup eConfig = ConfigUtils.addOrGetModule(config, EmissionsConfigGroup.class);
-		eConfig.setDetailedColdEmissionFactorsFile(HBEFA_FILE_COLD_DETAILED);
-		eConfig.setDetailedWarmEmissionFactorsFile(HBEFA_FILE_WARM_DETAILED);
-		eConfig.setAverageColdEmissionFactorsFile(HBEFA_FILE_COLD_AVERAGE);
-		eConfig.setAverageWarmEmissionFactorsFile(HBEFA_FILE_WARM_AVERAGE);
-		eConfig.setHbefaTableConsistencyCheckingLevel(EmissionsConfigGroup.HbefaTableConsistencyCheckingLevel.consistent);
-		eConfig.setDetailedVsAverageLookupBehavior(EmissionsConfigGroup.DetailedVsAverageLookupBehavior.tryDetailedThenTechnologyAverageThenAverageTable);
-		eConfig.setEmissionsComputationMethod(EmissionsConfigGroup.EmissionsComputationMethod.StopAndGoFraction);
-
 		return config;
 	}
 
 	@Override
 	protected void prepareScenario(Scenario scenario) {
-		// add hbefa link attributes.
-		HbefaRoadTypeMapping roadTypeMapping = OsmHbefaMapping.build();
-		roadTypeMapping.addHbefaMappings(scenario.getNetwork());
-		// --- MODIFICA EV: Iniezione Veicoli e Hub ---
-		// Definisce l'infrastruttura (DEVE avvenire prima della creazione degli agenti che la usano)
-        ChargingHubGenerator.generateChargingHubs(scenario); 
-        // Definisce i veicoli e gli agenti
-		try {
-			EvGenerator.loadCsv("input/ev-dataset.csv");
-			EvGenerator.setSeed(42);
-			EvFleetManager fleetManager = new EvFleetManager();
-			fleetManager.generateFleetFromCsv(scenario, 50, 0.7, 0.15);
-		} catch (IOException e) {
-			throw new RuntimeException("Errore nel caricamento del CSV EV", e);
-		}
+		// --- MODIFICA EV: Creazione Hub e Manager ---
+		this.infraSpec = new ChargingInfrastructureSpecificationDefaultImpl ();
+		this.hubManager = new HubManager(scenario.getNetwork(), infraSpec);
+		// Carica hub da CSV
+		this.hubManager.createHub(Path.of("input/CustomInput/charging_hub.csv")); 
+		System.out.println(">>> HubManager: " + hubManager.getHubOccupancyMap().size() + " hub registrati.");
+		// Genera la flotta EV
+		EvFleetManager fleetManager = new EvFleetManager();
+		fleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 50, 0.7, 0.15);
 		System.out.println(">>> Scenario preparato con Flotta EV e Hub.");
 	}
 
@@ -165,7 +154,6 @@ public class OpenBerlinScenario extends MATSimApplication {
 		controler.addOverridingModule(new QsimTimingModule());
 
 		// --- MODIFICA EV: Modulo e Listener EV ---
-		
 		// 1. Installa il Modulo EV principale (gestisce la fisica della batteria e ricarica)
 		controler.addOverridingModule(new EvModule());
 
@@ -176,7 +164,7 @@ public class OpenBerlinScenario extends MATSimApplication {
 				//In questo modo i listener ricevono il EvFleetManager già popolato.
 				bind(EvFleetManager.class).toInstance(evFleetManager);
 				addMobsimListenerBinding().to(EvSocMonitor.class);
-				addEventHandlerBinding().to(EvHubOccupancyMonitor.class);
+				addEventHandlerBinding().toInstance(hubManager);
 			}
 		});
 

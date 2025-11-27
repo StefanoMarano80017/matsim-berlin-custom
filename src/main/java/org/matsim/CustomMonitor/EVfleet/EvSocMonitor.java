@@ -1,4 +1,4 @@
-package org.matsim.CustomMonitor;
+package org.matsim.CustomMonitor.EVfleet;
 
 import org.matsim.core.mobsim.framework.events.MobsimBeforeSimStepEvent;
 import org.matsim.core.mobsim.framework.listeners.MobsimBeforeSimStepListener;
@@ -29,6 +29,7 @@ public class EvSocMonitor implements MobsimBeforeSimStepListener {
         int s = (int) (seconds % 60);
         return String.format("%02d:%02d:%02d", h, m, s);
     }
+    
     // --- Monitoraggio Periodico veicoli ---
     @Override
     public void notifyMobsimBeforeSimStep(@SuppressWarnings("rawtypes") MobsimBeforeSimStepEvent e) {
