@@ -92,10 +92,9 @@ public class EvModel {
     }
 
     // --- Aggiornamento dinamico ---
-    public void updateDynamicState(double soc, double energyJoules, boolean charging) {
+    public void updateDynamicState(double soc, double energyJoules) {
         this.currentSoc = soc;
         this.currentEnergyJoules = energyJoules;
-        this.isCharging = charging;
     }
 
     public void addDistanceTraveled(double distanceMeters) {
@@ -130,6 +129,11 @@ public class EvModel {
     public double getCurrentEnergyJoules() { return currentEnergyJoules; }
     public double getDistanceTraveledKm() { return distanceTraveledKm; }
     public boolean isCharging() { return isCharging; }
+
+
+    // ---- Setter ---
+    public void setCharging(boolean charging) { this.isCharging = charging; }
+
 
     /**
      * Autonomia stimata residua (km) basata su SOC attuale

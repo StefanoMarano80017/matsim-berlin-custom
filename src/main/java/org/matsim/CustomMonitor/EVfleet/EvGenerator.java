@@ -77,10 +77,10 @@ public class EvGenerator {
             // Stato iniziale
             evModel.updateDynamicState(
                     soc,
-                    evModel.getNominalCapacityKwh() * 3.6e6 * soc,
-                    false
+                    evModel.getNominalCapacityKwh() * 3.6e6 * soc
             );
 
+            evModel.setCharging(false);
             evModels.add(evModel);
         }
 
