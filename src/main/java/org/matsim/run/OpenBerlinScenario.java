@@ -21,6 +21,7 @@ import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ReplanningConfigGroup;
+import org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
@@ -40,6 +41,7 @@ import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParamete
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.matsim.CustomMonitor.TimeStepMonitor;
@@ -114,33 +116,69 @@ public class OpenBerlinScenario extends MATSimApplication {
             config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
         }
 
-        // --- Aggiunge strategia fittizia ChangeExpBeta per VSP ---
-        ReplanningConfigGroup.StrategySettings dummyStrategy = new ReplanningConfigGroup.StrategySettings();
-        dummyStrategy.setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta);
-        dummyStrategy.setWeight(0.0); // mai eseguita
-        dummyStrategy.setSubpopulation("person"); // subpopulation fittizia
-        config.replanning().addStrategySettings(dummyStrategy);
-
         config.qsim().setUsingTravelTimeCheckInTeleportation(true);
 
         // overwrite ride scoring params with values derived from car
         RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
         Activities.addScoringParams(config, true);
 
-        // Forza l'esecuzione singola (Solo 1 mobsim, niente loop)
-        config.controller().setLastIteration(0);
+        // Required for all calibration strategies
+		for (String subpopulation : List.of("person", "freight", "goodsTraffic", "commercialPersonTraffic", "commercialPersonTraffic_service")) {
+			config.replanning().addStrategySettings(
+				new ReplanningConfigGroup.StrategySettings()
+					.setStrategyName(planSelector)
+					.setWeight(1.0)
+					.setSubpopulation(subpopulation)
+			);
 
-        // disattivo la scrittura della popolazione e dei piani poiché sono già in un stato ottimizzato
-        config.controller().setWritePlansInterval(0); // Non scrivere i plans ad ogni iterazione
-        config.controller().setDumpDataAtEnd(false); // Non riscrivere nulla a fine run
-        config.controller().setWriteEventsInterval(1); // Mantieni gli eventi
-        config.controller().setWritePlansInterval(Integer.MAX_VALUE); // Non scrivere i piani
+			config.replanning().addStrategySettings(
+				new ReplanningConfigGroup.StrategySettings()
+					.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute)
+					.setWeight(0.15)
+					.setSubpopulation(subpopulation)
+			);
+		}
 
+		config.replanning().addStrategySettings(
+			new ReplanningConfigGroup.StrategySettings()
+				.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.TimeAllocationMutator)
+				.setWeight(0.15)
+				.setSubpopulation("person")
+		);
+
+		config.replanning().addStrategySettings(
+			new ReplanningConfigGroup.StrategySettings()
+				.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice)
+				.setWeight(0.15)
+				.setSubpopulation("person")
+		);
+
+        // --- Forziamo il Re-routing su TUTTI gli agenti nell'Iterazione 0 ---
+        ReplanningConfigGroup replanningConfig = config.replanning();
+
+        StrategySettings initialReRoute = new StrategySettings();
+        initialReRoute.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute);
+        initialReRoute.setWeight(1.0); // 100% degli agenti nell'iterazione 0
+        initialReRoute.setDisableAfter(1); // Eseguito solo nell'iterazione 0
+
+        // Questo sovrascriverà temporaneamente la strategia di routing a peso 0.15 
+        // per la prima iterazione, garantendo che anche i nuovi agenti vengano processati.
+        replanningConfig.addStrategySettings(initialReRoute);
+        config.qsim().setUsePersonIdForMissingVehicleId(false);
         // --- Aggiungi Configurazione EV (file esterni) ---
         ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
         
         // Bicycle config must be present
         ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
+
+        // Forza l'esecuzione singola (Solo 1 mobsim, niente loop)
+        config.controller().setLastIteration(1);
+
+        // disattivo la scrittura della popolazione e dei piani poiché sono già in un stato ottimizzato
+        config.controller().setWritePlansInterval(1); // Non scrivere i plans ad ogni iterazione
+        config.controller().setDumpDataAtEnd(false); // Non riscrivere nulla a fine run
+        config.controller().setWriteEventsInterval(1); // Mantieni gli eventi
+
         return config;
     }
 
@@ -154,12 +192,13 @@ public class OpenBerlinScenario extends MATSimApplication {
         System.out.println(">>> HubManager: " + hubManager.getHubOccupancyMap().size() + " hub registrati.");
         // Genera la flotta EV
         this.evFleetManager = new EvFleetManager();
-        this.evFleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 50, 0.7, 0.15);
+        this.evFleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 1, 0.7, 0.15);
         System.out.println(">>> Scenario preparato con Flotta EV e Hub.");
     }
 
     @Override
     protected void prepareControler(Controler controler) {
+        
         // --- MODIFICA EV: Modulo e Listener EV ---
         // Installa il Modulo EV principale (gestisce la fisica della batteria e ricarica)
         controler.addOverridingModule(new EvModule());
@@ -197,15 +236,15 @@ public class OpenBerlinScenario extends MATSimApplication {
         });
 
         // ================= DEBUG ==========================
+        Scenario scenario = controler.getScenario();
         Set<Id<Vehicle>> electricVehicleIds = Collections.unmodifiableSet(this.evFleetManager.getFleet().keySet());
-        QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds);
+        QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds, scenario);
         controler.addOverridingModule(new AbstractModule() {
             @Override
             public void install() {
                 addEventHandlerBinding().toInstance(debugHandler);
             }
         });
-
 
         // AdvancedScoring is specific to matsim-berlin!
         if (ConfigUtils.hasModule(controler.getConfig(), AdvancedScoringConfigGroup.class)) {

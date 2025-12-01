@@ -1,7 +1,6 @@
 package org.matsim.CustomMonitor.EVfleet;
 
 import org.matsim.CustomMonitor.model.EvModel;
-import org.matsim.api.core.v01.Coord;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.network.Link;
@@ -12,7 +11,7 @@ import org.matsim.contrib.ev.charging.ChargingStartEvent;
 import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
 import org.matsim.contrib.ev.fleet.*;
 import org.matsim.core.population.routes.NetworkRoute;
-import org.matsim.core.router.TripRouter;
+import org.matsim.core.population.routes.RouteFactories;
 import org.matsim.vehicles.*;
 import org.matsim.api.core.v01.network.Network;
 
@@ -60,8 +59,9 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
         populateScenarioVehicles(scenario);
 
         assignDummyPlansToFleet(scenario);
-    }
 
+        //debugPopulation(scenario);
+    }
 
     /**
      * Debug della popolazione: stampa tutte le persone e i loro veicoli/piani.
@@ -73,8 +73,11 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
 
         for (Person person : population.getPersons().values()) {
             // Se l'ID della persona inizia con "personEV_"
-            if (person.getId().toString().startsWith("personEV_")) {
+            if (person.getId().toString().startsWith("EV_")) {
                 System.out.println("Person ID: " + person.getId());
+
+                Id<Vehicle> id = VehicleUtils.getVehicleId(person, "car");
+                System.out.println("  Veicolo associato ID: " + id);
 
                 for (Plan plan : person.getPlans()) {
                     for (PlanElement pe : plan.getPlanElements()) {
@@ -104,7 +107,7 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
             }
         }
         System.out.println("=== Fine Debug Popolazione ===");
-        throw new RuntimeException("Debug Popolazione completato - interruzione esecuzione");
+        //throw new RuntimeException("Debug Popolazione completato - interruzione esecuzione");
     }
 
     private void loadAndGenerateModels(Path csv, int count, double socMean, double socStdDev) {
@@ -185,8 +188,16 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
             PopulationFactory factory,
             Id<Vehicle> vehicleId
     ) {
-        Person person = factory.createPerson(Id.createPersonId("person" + vehicleId));
-        person.getAttributes().putAttribute("vehicle", vehicleId);
+        Person person = factory.createPerson(Id.createPersonId(vehicleId));
+
+        // Assegna la subpopulation "person" affinché le strategie di OpenBerlin lo riconoscano
+        person.getAttributes().putAttribute("subpopulation", "person");
+
+        Map<String, Id<Vehicle>> modeToVehicle = new HashMap<>();
+        modeToVehicle.put("car", vehicleId);
+
+        VehicleUtils.insertVehicleIdsIntoPersonAttributes(person, modeToVehicle);
+
         Plan plan = factory.createPlan();
 
         // Trova i link più vicini guidabili da auto
@@ -204,11 +215,14 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
 
         // Home mattina
         Activity home = factory.createActivityFromLinkId("home", homeLink.getId());
-        home.setEndTime(7 * 3600);
+        home.setEndTime(7 * 3600); // 25200
         plan.addActivity(home);
 
         // Leg to work
         Leg legToWork = factory.createLeg("car");
+        // Aggiungi un NetworkRoute vuoto per dire a MATSim che il percorso deve essere calcolato
+        //NetworkRoute routeToWork = routeFactories.createRoute(NetworkRoute.class, homeLink.getId(), workLink.getId());
+        //legToWork.setRoute(routeToWork); 
         plan.addLeg(legToWork);
 
         // Work
@@ -218,6 +232,8 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
 
         // Leg back home
         Leg legHome = factory.createLeg("car");
+        //NetworkRoute routeHome = routeFactories.createRoute(NetworkRoute.class, workLink.getId(), homeLink.getId());
+        //legHome.setRoute(routeHome); 
         plan.addLeg(legHome);
 
         // Home sera
@@ -247,13 +263,19 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
         Random random = new Random();
 
         // Scegli due link distinti
+        /* 
         int idx1 = random.nextInt(carLinks.size());
         int idx2;
         do {
             idx2 = random.nextInt(carLinks.size());
         } while (idx2 == idx1);
+            */
+        Link idx1 = carLinks.get(0);
+        Link idx2 = carLinks.get(Math.min(50, carLinks.size() - 1));
 
-        return new Link[]{carLinks.get(idx1), carLinks.get(idx2)};
+
+        //return new Link[]{carLinks.get(idx1), carLinks.get(idx2)};
+        return new Link[]{idx1, idx2};
     }
 
 
@@ -284,12 +306,12 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
                 missing++;
             }
         }
-        /*
+        
         for (EvModel ev : fleet.values()) {
             System.out.println(ev.getVehicleId() + " ha percorso " + ev.getDistanceTraveledKm() + " km");
         }
-         */
         
+        //debugPopulation(qSim.getScenario());
         System.out.printf("[EvFleetManager] updateSocFromQSim: aggiornati=%d, mancanti=%d%n", updated, missing);
     }
 

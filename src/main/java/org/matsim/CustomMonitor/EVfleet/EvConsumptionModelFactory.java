@@ -16,10 +16,6 @@ public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory
 
     private final EvFleetManager evFleetManager;
 
-    public EvConsumptionModelFactory() {
-        this.evFleetManager = null; // Placeholder, Guice dovrebbe iniettare l'istanza corretta.
-    }
-
     /**
      * Guice inietta l'EvFleetManager che è stato bindato come istanza in OpenBerlinScenario.
      */

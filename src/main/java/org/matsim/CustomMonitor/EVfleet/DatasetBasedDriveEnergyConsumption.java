@@ -4,7 +4,6 @@ import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.fleet.ElectricVehicle;
-
 /**
  * Modello di consumo che si basa direttamente sul valore medio (kWh/km) 
  * fornito dal dataset del veicolo (EvModel), convertendolo in un consumo istantaneo 
@@ -47,6 +46,9 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
 
         double consumptionKwhPerKm = evData.getConsumptionKwhPerKm();
         
+        System.out.println("DEBUG: Veicolo " + electricVehicle.getId() + 
+                           " consumo medio: " + consumptionKwhPerKm + " kWh/km su link " + link.getId());
+
         // Calcola il consumo in Joule per metro (J/m)
         double consumptionJoulesPerMeter = consumptionKwhPerKm * KWH_PER_KM_TO_JOULE_PER_METER_FACTOR;
 
@@ -59,7 +61,10 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
         // Aggiorna la distanza percorsa nel nostro EvModel per scopi di monitoraggio
         evData.addDistanceTraveled(distanceMeters);
 
+        throw new RuntimeException("DEBUG: Consumo calcolato per veicolo " + electricVehicle.getId() + 
+                                   " su link " + link.getId() + " e': " + totalConsumptionJoules + " J");
+
         // MATSim si aspetta che il consumo sia espresso in un valore POSITIVO
-        return totalConsumptionJoules;
+        //return totalConsumptionJoules;
     }
 }

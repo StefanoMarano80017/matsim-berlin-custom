@@ -3,7 +3,7 @@
 <config>
 	
     <module name="controller">
-        <param name="lastIteration" value="0"/>
+        <param name="lastIteration" value="1"/>
 		<param name="overwriteFiles" value="deleteDirectoryIfExists"/>
 		<param name="runId" value="berlin-one-shot-test"/>
 		<param name="outputDirectory" value="./output/berlin-test-results"/>
