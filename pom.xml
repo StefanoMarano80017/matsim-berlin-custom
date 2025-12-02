@@ -32,6 +32,13 @@
 
 	<dependencies>
 
+		<dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
+            <scope>compile</scope>
+        </dependency>
+
 		<!-- This is the matsim "core": -->
 		<dependency>
 			<groupId>org.matsim</groupId>
@@ -223,7 +230,6 @@
 					<groupId>xerces</groupId>
 					<artifactId>xercesImpl</artifactId>
 				</exclusion>
-
 			</exclusions>
 
 		</dependency>

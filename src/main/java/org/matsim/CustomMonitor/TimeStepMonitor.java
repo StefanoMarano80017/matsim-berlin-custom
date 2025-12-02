@@ -53,6 +53,8 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
             hubManager.getHubOccupancyMap();       // leggi stato hub
             hubManager.getHubEnergyMap();          // leggi energia hub
             System.out.println("[TimeStepMonitor] Stato hub letto.");
+            System.out.println("[TimeStepMonitor] Hub occupazione: " + hubManager.getHubOccupancyMap().toString());
+            System.out.println("[TimeStepMonitor] Hub energia: " + hubManager.getHubEnergyMap().toString());
 
             // TODO: chiamata agente RL
             // rlAgent.updatePolicy(evFleetManager, hubManager);

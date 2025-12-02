@@ -1,5 +1,6 @@
 package org.matsim.run;
 
+import com.google.inject.Inject;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import org.matsim.analysis.QsimTimingModule;
@@ -7,6 +8,7 @@ import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
+import org.matsim.api.core.v01.network.Link;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
@@ -15,6 +17,8 @@ import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import org.matsim.contrib.bicycle.BicycleTravelTime;
 import org.matsim.contrib.ev.EvConfigGroup; // Import del gruppo di configurazione EV
 import org.matsim.contrib.ev.EvModule; // Import del Modulo EV
+import org.matsim.contrib.ev.infrastructure.Charger;
+import org.matsim.contrib.ev.infrastructure.ChargerSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationDefaultImpl;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
@@ -22,6 +26,8 @@ import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
 import org.matsim.core.config.groups.ReplanningConfigGroup;
 import org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings;
+import org.matsim.core.config.groups.ScoringConfigGroup;
+import org.matsim.core.config.groups.ScoringConfigGroup.ActivityParams;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.controler.Controler;
 import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
@@ -37,9 +43,11 @@ import org.matsim.vehicles.Vehicle;
 
 import picocli.CommandLine;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
+import com.google.inject.Provider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -50,7 +58,6 @@ import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.EVfleet.QuickLinkDebugHandler;
 // IMPORTS AGGIUNTI
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
-import org.matsim.contrib.ev.discharging.AuxEnergyConsumption;
 import org.matsim.CustomMonitor.EVfleet.EvConsumptionModelFactory;
 // END IMPORTS AGGIUNTI
 
@@ -175,10 +182,23 @@ public class OpenBerlinScenario extends MATSimApplication {
         config.controller().setLastIteration(1);
 
         // disattivo la scrittura della popolazione e dei piani poiché sono già in un stato ottimizzato
-        config.controller().setWritePlansInterval(1); // Non scrivere i plans ad ogni iterazione
-        config.controller().setDumpDataAtEnd(false); // Non riscrivere nulla a fine run
+        //config.controller().setWritePlansInterval(1); // Non scrivere i plans ad ogni iterazione
+        //config.controller().setDumpDataAtEnd(false); // Non riscrivere nulla a fine run
         config.controller().setWriteEventsInterval(1); // Mantieni gli eventi
 
+        // Ottieni il ConfigGroup per lo scoring
+        ScoringConfigGroup scoringConfig = config.scoring();
+        // Crea un nuovo blocco di parametri per l'attività "charge"
+        ActivityParams chargeParams = new ActivityParams("charge");
+
+        // È comune impostare l'utilità/punteggio a 0.0 per la ricarica,
+        // poiché la logica di utilità (costi, penalità per SOC basso)
+        // è gestita dal modulo EV, non dallo scoring CN standard.
+        chargeParams.setTypicalDuration(Duration.ofHours(0).plusMinutes(30).getSeconds()); // Es. 30 minuti di durata tipica
+        chargeParams.setMinimalDuration(Duration.ofHours(0).plusMinutes(15).getSeconds()); 
+
+        // Aggiungi i parametri al gruppo di scoring
+        scoringConfig.addActivityParams(chargeParams);
         return config;
     }
 
@@ -194,17 +214,34 @@ public class OpenBerlinScenario extends MATSimApplication {
         this.evFleetManager = new EvFleetManager();
         this.evFleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 1, 0.7, 0.15);
         System.out.println(">>> Scenario preparato con Flotta EV e Hub.");
+
+
+
+        // === DEBUG: VERIFICA INFRASTRUTTURA DI RICARICA ===
+        System.out.println("--- DEBUG INFRASTRUTTURA ---");
+        int totalChargers = 0;
+        // 1. Itera su tutti i Link che contengono caricabatterie
+        for (Id<Charger> linkId : infraSpec.getChargerSpecifications().keySet()) {
+            // 2. Ottieni la specifica dei caricabatterie per quel Link
+            ChargerSpecification linkSpec = infraSpec.getChargerSpecifications().get(linkId);
+            // 3. Conta il numero di caricabatterie e stampa i dettagli
+            totalChargers ++;
+            System.out.printf("Link con Hub: %s ",
+                linkId            
+            );
+        }
+        
+        System.out.println(">>> TOTALE Link con Hub: " + infraSpec.getChargerSpecifications().size());
+        System.out.println(">>> TOTALE Colonnine Registrate: " + totalChargers);
+        System.out.println("---------------------------------");
+
     }
 
     @Override
     protected void prepareControler(Controler controler) {
-        
         // --- MODIFICA EV: Modulo e Listener EV ---
         // Installa il Modulo EV principale (gestisce la fisica della batteria e ricarica)
         controler.addOverridingModule(new EvModule());
-        controler.addOverridingModule(new SimWrapperModule());
-        controler.addOverridingModule(new TravelTimeBinding());
-        controler.addOverridingModule(new QsimTimingModule());
         // Registra il Monitor (Gestisce log periodico del SOC e conteggio Hub)
         controler.addOverridingModule(new AbstractModule() {
             @Override
@@ -215,36 +252,41 @@ public class OpenBerlinScenario extends MATSimApplication {
                 bind(HubManager.class).toInstance(hubManager);
                 bind(TimeStepMonitor.class).asEagerSingleton();
                 //Setto il parametro step size per il monitor
-                bind(Double.class).annotatedWith(Names.named("timeStepMonitorStep")).toInstance(300.0);
+                bind(Double.class).annotatedWith(Names.named("timeStepMonitorStep")).toInstance(900.0);
                 // Listener che scatta ogni TimeStep per monitorare SOC e Hub
                 addMobsimListenerBinding().to(TimeStepMonitor.class);
                 addEventHandlerBinding().toInstance(hubManager);
                 addEventHandlerBinding().toInstance(evFleetManager); 
-
                 // === INSERIMENTO MODELLO DI CONSUMO CUSTOM ===
-                bind(DriveEnergyConsumption.Factory.class).to(EvConsumptionModelFactory.class).asEagerSingleton();
-
-                // 2. Imposta AuxEnergyConsumption a 0.0. 
-                // Questo disabilita il consumo ausiliario separato, assumendo che sia 
-                // già incluso nel dato medio kWh/km fornito dal dataset.
-                bind(AuxEnergyConsumption.Factory.class).toInstance(
-                    electricVehicle -> ( beginTime, duration, linkId ) -> 0.0 // Consumo ausiliario 0 Joule
-                );
-                
-                // ===========================================
+                bind(DriveEnergyConsumption.Factory.class).toProvider(new Provider<DriveEnergyConsumption.Factory>() {
+                    // B. Guice inietterà l'EvFleetManager qui (che è bindato toInstance)
+                    @Inject
+                    private EvFleetManager providerEvFleetManager; 
+                    // C. Questo metodo crea e restituisce l'istanza della Factory
+                    @Override
+                    public DriveEnergyConsumption.Factory get() {
+                        // Qui istanziamo la Factory, passandole il Manager iniettato sopra (B)
+                        return new EvConsumptionModelFactory(this.providerEvFleetManager);
+                    }
+                }).asEagerSingleton();
             }
         });
 
+        controler.addOverridingModule(new SimWrapperModule());
+        controler.addOverridingModule(new TravelTimeBinding());
+        controler.addOverridingModule(new QsimTimingModule());
+
         // ================= DEBUG ==========================
-        Scenario scenario = controler.getScenario();
+        /* 
         Set<Id<Vehicle>> electricVehicleIds = Collections.unmodifiableSet(this.evFleetManager.getFleet().keySet());
-        QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds, scenario);
+        QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds);
         controler.addOverridingModule(new AbstractModule() {
             @Override
             public void install() {
                 addEventHandlerBinding().toInstance(debugHandler);
             }
         });
+        */
 
         // AdvancedScoring is specific to matsim-berlin!
         if (ConfigUtils.hasModule(controler.getConfig(), AdvancedScoringConfigGroup.class)) {

@@ -10,8 +10,8 @@ import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 import org.matsim.contrib.ev.charging.ChargingStartEvent;
 import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
 import org.matsim.contrib.ev.fleet.*;
+import org.matsim.core.config.groups.ScoringConfigGroup.ActivityParams;
 import org.matsim.core.population.routes.NetworkRoute;
-import org.matsim.core.population.routes.RouteFactories;
 import org.matsim.vehicles.*;
 import org.matsim.api.core.v01.network.Network;
 
@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import javax.inject.Inject;
 
 import java.util.Random;
 
@@ -38,6 +40,7 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
     // --- Fields ---
     private final Map<Id<Vehicle>, EvModel> fleet = new HashMap<>();
 
+    @Inject
     public EvFleetManager() {
         // default constructor (per binding/injection)
     }
@@ -117,7 +120,11 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
             List<EvModel> evModels = EvGenerator.generateEvModels(count, socMean, socStdDev);
 
             for (EvModel ev : evModels) {
-                fleet.put(ev.getVehicleId(), ev);
+                /*
+                * forzo l'utilizzo dello stesso id del veicolo in qSim
+                */
+                Id<Vehicle> qsimVehicleId = Id.create(ev.getVehicleId().toString() + "_car", Vehicle.class);
+                fleet.put(qsimVehicleId, ev);
             }
             System.out.println("[EvFleetManager] Flotta generata. Totale modelli: " + fleet.size());
         } catch (IOException e) {
@@ -147,7 +154,8 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
         VehicleType vehicleType = getOrCreateVehicleType(vehicles, typeId, model);
 
         // Crea il veicolo
-        Vehicle vehicle = VehicleUtils.createVehicle(model.getVehicleId(), vehicleType);
+        Id<Vehicle> qsimVehicleId = Id.create(model.getVehicleId().toString() + "_car", Vehicle.class);
+        Vehicle vehicle = VehicleUtils.createVehicle(qsimVehicleId, vehicleType);
         vehicle.getAttributes().putAttribute(ElectricFleetUtils.INITIAL_SOC, model.getCurrentSoc());
 
         vehicles.addVehicle(vehicle);
@@ -189,54 +197,62 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
             Id<Vehicle> vehicleId
     ) {
         Person person = factory.createPerson(Id.createPersonId(vehicleId));
-
         // Assegna la subpopulation "person" affinché le strategie di OpenBerlin lo riconoscano
         person.getAttributes().putAttribute("subpopulation", "person");
-
+        person.getAttributes().putAttribute("wevc:active", true);
         Map<String, Id<Vehicle>> modeToVehicle = new HashMap<>();
         modeToVehicle.put("car", vehicleId);
 
         VehicleUtils.insertVehicleIdsIntoPersonAttributes(person, modeToVehicle);
 
         Plan plan = factory.createPlan();
-
-        // Trova i link più vicini guidabili da auto
+        
         Link[] links = pickTwoRandomCarLinks(scenario);
         Link homeLink = links[0];
         Link workLink = links[1];
-
-        System.out.println("Home link: " + homeLink.getId());
-        System.out.println("Work link: " + workLink.getId());
-
-        if (homeLink == null || workLink == null) {
-            System.err.println("[WARN] Non trovato link car per home o work per veicolo " + vehicleId);
-            throw new IllegalStateException("Link car non trovato per home o work");
+        
+        // **UTILIZZA IL LINK FISSO PER LA RICARICA**
+        Id<Link> chargingLinkId = Id.createLinkId("4372494"); 
+        if (homeLink == null || workLink == null || !scenario.getNetwork().getLinks().containsKey(chargingLinkId)) {
+             throw new IllegalStateException("Link car non trovato per home, work o ricarica.");
         }
-
-        // Home mattina
+        
+        // 0. Home mattina
         Activity home = factory.createActivityFromLinkId("home", homeLink.getId());
-        home.setEndTime(7 * 3600); // 25200
+        home.setEndTime(7 * 3600); // 07:00:00
         plan.addActivity(home);
 
-        // Leg to work
+        // 1. Leg to work
         Leg legToWork = factory.createLeg("car");
-        // Aggiungi un NetworkRoute vuoto per dire a MATSim che il percorso deve essere calcolato
-        //NetworkRoute routeToWork = routeFactories.createRoute(NetworkRoute.class, homeLink.getId(), workLink.getId());
-        //legToWork.setRoute(routeToWork); 
         plan.addLeg(legToWork);
 
-        // Work
+        // 2. Work
         Activity work = factory.createActivityFromLinkId("work", workLink.getId());
-        work.setEndTime(16 * 3600);
+        work.setEndTime(8 * 3600); // 10:00:00
         plan.addActivity(work);
 
-        // Leg back home
-        Leg legHome = factory.createLeg("car");
-        //NetworkRoute routeHome = routeFactories.createRoute(NetworkRoute.class, workLink.getId(), homeLink.getId());
-        //legHome.setRoute(routeHome); 
-        plan.addLeg(legHome);
+        // === INIZIO: SEQUENZA RICARICA DOPO IL LAVORO === 
+        // 3. Leg to Charge (Viaggio dal Link di lavoro all'Hub)
+        Leg legToCharge = factory.createLeg("car");
+        plan.addLeg(legToCharge); 
 
-        // Home sera
+        // 4. Attività di Ricarica (Charging)
+        Activity chargeActivity = factory.createActivityFromLinkId("charge", chargingLinkId);
+        // Attributi SOC Target
+        double maxChargingDuration = 12.0 * 3600.0; // 12h max
+        double targetSocValue = 0.75; // Ricarica fino al 75%
+        chargeActivity.getAttributes().putAttribute("isCharging", maxChargingDuration);
+        chargeActivity.getAttributes().putAttribute("targetSoc", targetSocValue);
+        chargeActivity.setEndTime(23 * 3600); // Ricarica al massimo fino alle 23:00 (safety cap finale)
+        plan.addActivity(chargeActivity);
+
+        // 5. Leg back home (Viaggio dall'Hub al Link di casa)
+        Leg legHome = factory.createLeg("car");
+        plan.addLeg(legHome);
+        
+        // === FINE: SEQUENZA RICARICA ===
+
+        // 6. Home sera
         Activity homeEvening = factory.createActivityFromLinkId("home", homeLink.getId());
         plan.addActivity(homeEvening);
 
@@ -325,7 +341,8 @@ public class EvFleetManager implements ChargingStartEventHandler, ChargingEndEve
     }
 
     private boolean updateSingleVehicleState(EvModel evModel, ElectricFleet electricFleet) {
-        ElectricVehicle ev = electricFleet.getElectricVehicles().get(evModel.getVehicleId());
+        Id<Vehicle> qsimVehicleId = Id.create(evModel.getVehicleId().toString() + "_car", Vehicle.class);
+        ElectricVehicle ev = electricFleet.getElectricVehicles().get(qsimVehicleId);
         if (ev != null && ev.getBattery() != null) {
             double soc = ev.getBattery().getSoc();
             double energyJ = ev.getBattery().getCharge();

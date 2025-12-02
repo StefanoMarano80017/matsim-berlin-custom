@@ -1,39 +1,40 @@
 package org.matsim.CustomMonitor.EVfleet;
 
-import org.matsim.contrib.ev.fleet.ElectricVehicle;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
-
+import org.matsim.contrib.ev.fleet.ElectricVehicle;
 import javax.inject.Inject;
 
 /**
- * Factory personalizzata per creare istanze di DatasetBasedDriveEnergyConsumption.
- * Questa factory implementa l'interfaccia richiesta da MATSim per fornire il modello
- * di consumo durante la simulazione.
- * * Grazie a Guice, questa factory può iniettare l'EvFleetManager (bindato in OpenBerlinScenario)
- * e lo passa al modello di consumo.
+ * Factory che crea il modello di consumo DatasetBasedDriveEnergyConsumption.
+ * Questa factory riceve EvFleetManager tramite il suo costruttore,
+ * che viene iniettato al momento del binding nel Controler (tramite toInstance).
  */
 public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory {
 
     private final EvFleetManager evFleetManager;
 
     /**
-     * Guice inietta l'EvFleetManager che è stato bindato come istanza in OpenBerlinScenario.
+     * Costruttore iniettato da Guice. 
+     * Il MATSim Controler inietterà EvFleetManager che è stato precedentemente bindato.
+     * @param evFleetManager Il manager della flotta EV.
      */
-    @Inject
+    @Inject // Manteniamo @Inject per permettere a Guice di iniettare l'oggetto nella Factory
     public EvConsumptionModelFactory(EvFleetManager evFleetManager) {
         this.evFleetManager = evFleetManager;
     }
 
-    /**
-     * Crea un nuovo modello di consumo (DatasetBasedDriveEnergyConsumption) per ogni veicolo EV.
-     * La factory utilizza il veicolo EV corrente e il manager per inizializzare il modello.
-     *
-     * @param electricVehicle Il veicolo EV per cui creare il modello.
-     * @return Una nuova istanza di DatasetBasedDriveEnergyConsumption.
-     */
     @Override
     public DriveEnergyConsumption create(ElectricVehicle electricVehicle) {
-        // La EvFleetManager passata al costruttore viene usata per creare il modello specifico.
+        System.out.println("FACTORY CHIAMATA: Creazione modello di consumo per veicolo " + electricVehicle.getId());
+
+        // EvFleetManager contiene il veicolo con questo ID?
+        if (this.evFleetManager.getFleet().containsKey(electricVehicle.getId())) {
+            System.out.println("Veicolo Trovato nel custom Manager.");
+        } else {
+            System.err.println("!!! ATTENZIONE: Veicolo non trovato in EvFleetManager !!!");
+        }
+
+        // Restituisce l'istanza del tuo modello di consumo personalizzato.
         return new DatasetBasedDriveEnergyConsumption(electricVehicle, this.evFleetManager);
     }
 }
