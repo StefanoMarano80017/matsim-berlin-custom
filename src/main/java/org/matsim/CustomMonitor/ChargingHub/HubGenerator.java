@@ -59,8 +59,8 @@ public class HubGenerator {
                     String linkId = parts[1];
                     int nColonnine = parseIntSafe(parts[2], 1);
                     String type = parts[3];
-                    double power = parseDoubleSafe(parts[4], 22.0);
-
+                    double power = parseDoubleSafe(parts[4], 11.0);
+                    double powerW = power * 1000.0; 
                     // Validate link existence
                     Link link = network.getLinks().get(Id.createLinkId(linkId));
                     if (link == null) {
@@ -82,7 +82,7 @@ public class HubGenerator {
                                         .id(Id.create(chargerId, Charger.class))
                                         .linkId(link.getId())
                                         .chargerType(type)
-                                        .plugPower(power)
+                                        .plugPower(powerW)
                                         .plugCount(1) // 1 plug per colonnina
                                         .attributes(attrs)
                                         .build();

@@ -9,6 +9,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.population.Person;
 import org.matsim.application.MATSimApplication;
 import org.matsim.application.options.SampleOptions;
 import org.matsim.contrib.bicycle.BicycleConfigGroup;
@@ -24,8 +25,11 @@ import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationD
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
+import org.matsim.core.config.groups.PlansConfigGroup;
+import org.matsim.core.config.groups.QSimConfigGroup;
 import org.matsim.core.config.groups.ReplanningConfigGroup;
 import org.matsim.core.config.groups.ReplanningConfigGroup.StrategySettings;
+import org.matsim.core.config.groups.RoutingConfigGroup;
 import org.matsim.core.config.groups.ScoringConfigGroup;
 import org.matsim.core.config.groups.ScoringConfigGroup.ActivityParams;
 import org.matsim.core.controler.AbstractModule;
@@ -40,16 +44,24 @@ import org.matsim.run.scoring.AdvancedScoringModule;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.matsim.vehicles.Vehicle;
+import org.matsim.vehicles.VehicleType;
+import org.matsim.vehicles.VehicleUtils;
+import org.matsim.vehicles.VehiclesFactory;
 
 import picocli.CommandLine;
+import playground.vsp.ev.UrbanEVConfigGroup;
+import playground.vsp.ev.UrbanEVModule;
 import playground.vsp.scoring.IncomeDependentUtilityOfMoneyPersonScoringParameters;
 import com.google.inject.Provider;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.matsim.CustomMonitor.TimeStepMonitor;
@@ -104,6 +116,22 @@ public class OpenBerlinScenario extends MATSimApplication {
         // --- Creazione EV config---
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
         evConfig.chargersFile = "fake_chargers.xml"; // Placeholder, i charger saranno gestiti dal HubManager
+        UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule( config, UrbanEVConfigGroup.class );
+		urbanEVConfig.setCriticalSOC(0.4);
+		config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none );
+		//register charging interaction activities for car
+		config.scoring().addActivityParams(
+				new ActivityParams(TransportMode.car + UrbanEVModule.PLUGOUT_INTERACTION).setScoringThisActivityAtAll(false ) );
+		config.scoring().addActivityParams(
+				new ActivityParams( TransportMode.car + UrbanEVModule.PLUGIN_INTERACTION).setScoringThisActivityAtAll( false ) );
+
+        config.scoring().addActivityParams(
+            new ActivityParams("charging")
+                .setScoringThisActivityAtAll(true) // La si valuta
+                .setTypicalDuration(3600 * 2) // 8 ore di durata tipica (per il calcolo del punteggio)
+                .setMinimalDuration(300) // Durata minima di 5 minuti
+                // Se hai dei parametri di scoring specifici per "work", usali qui:
+        );
 
         SimWrapperConfigGroup sw = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
 
@@ -186,19 +214,11 @@ public class OpenBerlinScenario extends MATSimApplication {
         //config.controller().setDumpDataAtEnd(false); // Non riscrivere nulla a fine run
         config.controller().setWriteEventsInterval(1); // Mantieni gli eventi
 
-        // Ottieni il ConfigGroup per lo scoring
-        ScoringConfigGroup scoringConfig = config.scoring();
-        // Crea un nuovo blocco di parametri per l'attività "charge"
-        ActivityParams chargeParams = new ActivityParams("charge");
 
-        // È comune impostare l'utilità/punteggio a 0.0 per la ricarica,
-        // poiché la logica di utilità (costi, penalità per SOC basso)
-        // è gestita dal modulo EV, non dallo scoring CN standard.
-        chargeParams.setTypicalDuration(Duration.ofHours(0).plusMinutes(30).getSeconds()); // Es. 30 minuti di durata tipica
-        chargeParams.setMinimalDuration(Duration.ofHours(0).plusMinutes(15).getSeconds()); 
+        PlansConfigGroup plansConfig = config.plans();
+        // Imposta la gestione della modalità di routing mancante.
+        plansConfig.setHandlingOfPlansWithoutRoutingMode(PlansConfigGroup.HandlingOfPlansWithoutRoutingMode.useMainModeIdentifier);
 
-        // Aggiungi i parametri al gruppo di scoring
-        scoringConfig.addActivityParams(chargeParams);
         return config;
     }
 
@@ -212,42 +232,77 @@ public class OpenBerlinScenario extends MATSimApplication {
         System.out.println(">>> HubManager: " + hubManager.getHubOccupancyMap().size() + " hub registrati.");
         // Genera la flotta EV
         this.evFleetManager = new EvFleetManager();
-        this.evFleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 1, 0.7, 0.15);
+        this.evFleetManager.generateFleetFromCsv(Path.of("input/CustomInput/ev-dataset.csv"), scenario, 1, 0.6, 0.15);
         System.out.println(">>> Scenario preparato con Flotta EV e Hub.");
 
-
-
-        // === DEBUG: VERIFICA INFRASTRUTTURA DI RICARICA ===
+        // === DEBUG: VERIFICA INFRASTRUTTURA DI RICARICA (Aggiornato per l'interfaccia) ===
         System.out.println("--- DEBUG INFRASTRUTTURA ---");
         int totalChargers = 0;
-        // 1. Itera su tutti i Link che contengono caricabatterie
-        for (Id<Charger> linkId : infraSpec.getChargerSpecifications().keySet()) {
-            // 2. Ottieni la specifica dei caricabatterie per quel Link
-            ChargerSpecification linkSpec = infraSpec.getChargerSpecifications().get(linkId);
-            // 3. Conta il numero di caricabatterie e stampa i dettagli
-            totalChargers ++;
-            System.out.printf("Link con Hub: %s ",
-                linkId            
-            );
-        }
-        
-        System.out.println(">>> TOTALE Link con Hub: " + infraSpec.getChargerSpecifications().size());
-        System.out.println(">>> TOTALE Colonnine Registrate: " + totalChargers);
-        System.out.println("---------------------------------");
+        // Mappa temporanea per raggruppare le colonnine per Link ID
+        Map<Id<Link>, List<ChargerSpecification>> chargersByLink = new HashMap<>();
 
+        // 1. Itera su tutte le specifiche delle colonnine
+        for (ChargerSpecification chargerSpec : infraSpec.getChargerSpecifications().values()) {
+            Id<Link> linkId = chargerSpec.getLinkId();
+            // Raggruppa le specifiche per Link ID
+            chargersByLink.computeIfAbsent(linkId, k -> new ArrayList<>()).add(chargerSpec);
+            totalChargers += chargerSpec.getPlugCount(); // Contiamo il numero di plugs, non solo di Charger ID
+        }
+
+        // 2. Itera sui Link che ora sappiamo contengono colonnine
+        for (Id<Link> linkId : chargersByLink.keySet()) {
+            
+            List<ChargerSpecification> specsOnLink = chargersByLink.get(linkId);
+            
+            // Calcoliamo il totale delle prese su questo link sommando i plugCount
+            int totalPlugsOnLink = specsOnLink.stream().mapToInt(ChargerSpecification::getPlugCount).sum();
+            
+            System.out.printf("## Link ID: %s | Colonnine univoche: %d | Totale Prese: %d%n", 
+                linkId, 
+                specsOnLink.size(),
+                totalPlugsOnLink);
+            
+            // 3. Itera su ogni singola colonnina (Charger) su questo Link
+            for (ChargerSpecification chargerSpec : specsOnLink) {
+                
+                Id<Charger> chargerId = chargerSpec.getId();
+                String chargerType = chargerSpec.getChargerType();
+                double plugPower = chargerSpec.getPlugPower();
+                int plugCount = chargerSpec.getPlugCount();
+                String hubId = (String) chargerSpec.getAttributes().getAttribute("hubId"); 
+
+                System.out.printf("  - ID Colonnina: %s, Tipo: %s, Potenza per presa: %.1f kW, Prese: %d, Hub ID: %s%n",
+                    chargerId,
+                    chargerType,
+                    plugPower / 1000.0, // Conversione da W a kW
+                    plugCount,
+                    hubId != null ? hubId : "N/D"
+                );
+            }
+        }
+
+        System.out.println("---------------------------------");
+        System.out.println(">>> TOTALE Link con Hub: " + chargersByLink.size());
+        System.out.println(">>> TOTALE Prese (Plugs) Registrate: " + totalChargers);
+        System.out.println("---------------------------------");
+        //throw new RuntimeException("FINE DEBUG INFRASTRUTTURA - FERMO ESECUZIONE");
+
+        registerDefaultVehicles(scenario);
     }
 
     @Override
     protected void prepareControler(Controler controler) {
         // --- MODIFICA EV: Modulo e Listener EV ---
         // Installa il Modulo EV principale (gestisce la fisica della batteria e ricarica)
-        controler.addOverridingModule(new EvModule());
+       	controler.addOverridingModule(new UrbanEVModule());
+
         // Registra il Monitor (Gestisce log periodico del SOC e conteggio Hub)
         controler.addOverridingModule(new AbstractModule() {
             @Override
             public void install() {
+                // Sovrascrive l'implementazione di default di MATSim con la tua istanza
+                bind(ChargingInfrastructureSpecification.class).toInstance(infraSpec);
                 // Binding dell'EvFleetManager già istanziato in prepareScenario
-                // Questo è cruciale per l'iniezione nel modello di consumo.
                 bind(EvFleetManager.class).toInstance(evFleetManager);
                 bind(HubManager.class).toInstance(hubManager);
                 bind(TimeStepMonitor.class).asEagerSingleton();
@@ -277,7 +332,6 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new QsimTimingModule());
 
         // ================= DEBUG ==========================
-        /* 
         Set<Id<Vehicle>> electricVehicleIds = Collections.unmodifiableSet(this.evFleetManager.getFleet().keySet());
         QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds);
         controler.addOverridingModule(new AbstractModule() {
@@ -286,7 +340,6 @@ public class OpenBerlinScenario extends MATSimApplication {
                 addEventHandlerBinding().toInstance(debugHandler);
             }
         });
-        */
 
         // AdvancedScoring is specific to matsim-berlin!
         if (ConfigUtils.hasModule(controler.getConfig(), AdvancedScoringConfigGroup.class)) {
@@ -336,6 +389,66 @@ public class OpenBerlinScenario extends MATSimApplication {
                 addTravelTimeBinding(TransportMode.bike).to(BicycleTravelTime.class);
                 addTravelDisutilityFactoryBinding(TransportMode.bike).to(OnlyTimeDependentTravelDisutilityFactory.class);
             }
+        }
+    }
+
+
+// Rinomino la funzione per riflettere che gestisce più modi default
+    static void registerDefaultVehicles(Scenario scenario) { 
+        VehiclesFactory vehicleFactory = scenario.getVehicles().getFactory();
+
+        // =======================================================
+        // 1. GESTIONE WALK (Come risolto precedentemente)
+        // =======================================================
+        
+        VehicleType walkVehicleType = vehicleFactory.createVehicleType(Id.create("default_walk_type", VehicleType.class));
+        walkVehicleType.setNetworkMode(TransportMode.walk);
+        scenario.getVehicles().addVehicleType(walkVehicleType);
+        
+        Vehicle defaultWalkVehicle = vehicleFactory.createVehicle(Id.create("default_walk_vehicle", Vehicle.class), walkVehicleType);
+        scenario.getVehicles().addVehicle(defaultWalkVehicle);
+        
+        Id<Vehicle> walkVehicleId = defaultWalkVehicle.getId();
+
+        // =======================================================
+        // 2. NUOVO: GESTIONE PT (Trasporto Pubblico)
+        // =======================================================
+        
+        // Crea un veicolo fittizio per il Trasporto Pubblico (PT)
+        VehicleType ptVehicleType = vehicleFactory.createVehicleType(Id.create("default_pt_type", VehicleType.class));
+        ptVehicleType.setNetworkMode(TransportMode.pt); // Importante: deve essere "pt"
+        scenario.getVehicles().addVehicleType(ptVehicleType);
+        
+        // Un veicolo unico di default per PT da assegnare a tutti
+        Vehicle defaultPtVehicle = vehicleFactory.createVehicle(Id.create("default_pt_vehicle", Vehicle.class), ptVehicleType);
+        scenario.getVehicles().addVehicle(defaultPtVehicle);
+        
+        Id<Vehicle> ptVehicleId = defaultPtVehicle.getId();
+
+
+        // =======================================================
+        // 3. ASSEGNAZIONE A TUTTI GLI AGENTI
+        // =======================================================
+        
+        for (Person person : scenario.getPopulation().getPersons().values()) {
+            
+            Map<String, Id<Vehicle>> mode2Vehicle;
+            
+            try {
+                // Tenta di recuperare la mappa esistente (dovrebbe contenere car/bike)
+                mode2Vehicle = VehicleUtils.getVehicleIds(person);
+            } catch (RuntimeException e) {
+                // Se non esiste, crea una nuova mappa
+                mode2Vehicle = new HashMap<>();
+            }
+            
+            // Aggiungi l'associazione walk
+            mode2Vehicle.put(TransportMode.walk, walkVehicleId); 
+            
+            // NUOVO: Aggiungi l'associazione pt
+            mode2Vehicle.put(TransportMode.pt, ptVehicleId); 
+            
+            VehicleUtils.insertVehicleIdsIntoAttributes(person, mode2Vehicle);
         }
     }
 
