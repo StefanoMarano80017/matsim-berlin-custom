@@ -1,5 +1,6 @@
 package org.matsim.CustomMonitor.ChargingHub;
 
+import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.Charger;
@@ -13,7 +14,12 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class HubManager implements ChargingStartEventHandler, ChargingEndEventHandler {
+
+    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
 
     private final HubGenerator generator;
     private final ChargingInfrastructureSpecification infraSpec;
@@ -38,7 +44,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
     ) {
         try {
             generator.generateHubsFromCSV(csvFile);
-            System.out.println("[HubManager] Hub e colonnine generate con successo.");
+            log.debug("[HubManager] Hub e colonnine generate con successo.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -55,7 +61,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
             hubOccupancy.putIfAbsent(hubId, 0);
         });
 
-        System.out.println("[HubManager] Hub e colonnine create e registrate.");
+        log.debug("[HubManager] Hub e colonnine create e registrate.");
     }
 
     public void registerChargers(List<Charger> chargers, String hubId) {
@@ -77,7 +83,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
         recordTimeline(event.getTime());
 
         // --- Logging ---
-        System.out.printf("[%.0f] START charging: charger=%s, hub=%s, occupancy=%d%n",
+        log.debug("[HubManager] [%.0f] START charging: charger=%s, hub=%s, occupancy=%d%n",
             event.getTime(),
             event.getChargerId(),
             hubId,
@@ -96,7 +102,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
         recordTimeline(event.getTime());
 
         // --- Logging ---
-        System.out.printf("[%.0f] END charging: charger=%s, hub=%s, charge=%.2fJ, occupancy=%d, totalHubEnergy=%.2fJ%n",
+        log.debug("[HubManager] [%.0f] END charging: charger=%s, hub=%s, charge=%.2fJ, occupancy=%d, totalHubEnergy=%.2fJ%n",
             event.getTime(),
             event.getChargerId(),
             hubId,

@@ -29,6 +29,9 @@ import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.springboot.websocket.SimulationEventPublisher;
+import org.springboot.websocket.SimulationWebSocketService;
+
 import picocli.CommandLine;
 import playground.vsp.ev.UrbanEVConfigGroup;
 import playground.vsp.ev.UrbanEVModule;
@@ -36,6 +39,7 @@ import playground.vsp.ev.UrbanEVModule;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
 
@@ -45,6 +49,7 @@ public class OpenBerlinScenario extends MATSimApplication {
 
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
+    private SimulationEventPublisher eventPublisher;
 
     @CommandLine.Mixin
     private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
@@ -58,6 +63,11 @@ public class OpenBerlinScenario extends MATSimApplication {
         super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
     }
 
+    public OpenBerlinScenario(SimulationEventPublisher eventPublisher) {
+        super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        this.eventPublisher = Objects.requireNonNull(eventPublisher);
+    }
+
     public static void main(String[] args) {
         MATSimApplication.run(OpenBerlinScenario.class, args);
     }
@@ -66,6 +76,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         String[] arg = new String[] { "--1pct" };
         MATSimApplication.runWithDefaults(OpenBerlinScenario.class, arg);
     }
+
 
     @SuppressWarnings("deprecation")
     @Override
@@ -198,7 +209,14 @@ public class OpenBerlinScenario extends MATSimApplication {
     protected void prepareScenario(Scenario scenario) {
         Path hubPath = Path.of("input/CustomInput/charging_hub.csv");
         Path evDatasetPath = Path.of("input/CustomInput/ev-dataset.csv");
-        this.customModule = new CustomModule(scenario, hubPath, evDatasetPath, 1, 0.6, 0.15, true);
+        this.customModule = new CustomModule(
+            scenario, 
+            hubPath, 
+            evDatasetPath, 
+            1, 0.6, 0.15, 
+            true, 
+            this.eventPublisher
+        );
         customModule.PrepareScenarioEV(scenario);
     }
 

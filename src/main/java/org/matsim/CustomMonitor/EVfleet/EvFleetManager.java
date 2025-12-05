@@ -13,7 +13,12 @@ import javax.inject.Inject;
 import java.nio.file.Path;
 import java.util.*;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class EvFleetManager{
+
+    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
 
     private final Map<Id<Vehicle>, EvModel> fleet = new HashMap<>();
     /*
@@ -51,6 +56,7 @@ public class EvFleetManager{
         double socMean, 
         double socStdDev
     ) {
+        log.info("[EvFleetManager] Generating EV fleet from CSV: " + csv.toString());
         // 1. Usa la strategia per generare gli EvModel
         List<EvModel> EVmodels = fleetStrategy.generateFleet(csv, count, socMean, socStdDev);
         // 2. Registra modelli nel manager

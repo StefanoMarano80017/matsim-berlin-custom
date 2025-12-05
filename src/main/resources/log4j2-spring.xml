@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    
+    <Properties>
+        <!-- Default log level -->
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- MATSim core appender -->
+        <Console name="MATSIM_CORE" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [MATSim-Core] %logger{36} - %msg%n"/>
+        </Console>
+
+        <!-- MATSim custom appender -->
+        <Console name="MATSIM_CUSTOM" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [MATSim-Custom] %logger{36} - %msg%n"/>
+        </Console>
+
+        <!-- Spring Boot appender -->
+        <Console name="SPRINGBOOT" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [SpringBoot] %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <!-- MATSim core -->
+        <Logger name="org.matsim" additivity="false" level="OFF">
+            <AppenderRef ref="MATSIM_CORE"/>
+        </Logger>
+
+        <!-- MATSim custom -->
+        <Logger name="org.matsim.CustomMonitor" level="DEBUG" additivity="false">
+            <AppenderRef ref="MATSIM_CUSTOM"/>
+        </Logger>
+
+        <!-- Spring Boot -->
+        <Logger name="org.springboot" level="INFO" additivity="false">
+            <AppenderRef ref="SPRINGBOOT"/>
+        </Logger>
+
+        <!-- Root fallback -->
+        <Root level="WARN">
+            <AppenderRef ref="SPRINGBOOT"/>
+        </Root>
+    </Loggers>
+</Configuration>

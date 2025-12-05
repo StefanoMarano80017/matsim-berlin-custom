@@ -19,6 +19,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
+import org.springboot.websocket.SimulationEventPublisher;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -30,7 +31,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class CustomModule extends AbstractModule {
+
+    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
 
     private final HubManager hubManager;
     private final EvFleetManager evFleetManager;
@@ -43,6 +49,7 @@ public class CustomModule extends AbstractModule {
     private final double socMean;
     private final double socStdDev;
     private final boolean debug;
+    private SimulationEventPublisher eventPublisher;
 
     public CustomModule(
         Scenario scenario, 
@@ -51,7 +58,8 @@ public class CustomModule extends AbstractModule {
         int sampleSize, 
         double socMean, 
         double socStdDev, 
-        boolean debug
+        boolean debug, 
+        SimulationEventPublisher eventPublisher
     ) {
         this.chargingHubPath = chargingHubPath;
         this.evDatasetPath = evDatasetPath;
@@ -63,7 +71,13 @@ public class CustomModule extends AbstractModule {
         this.hubManager = new HubManager(scenario.getNetwork(), infraSpec);
         this.evFleetManager = new EvFleetManager();
         this.debug = debug;
+        this.eventPublisher = eventPublisher;
     }
+
+    public void setEventPublisher(SimulationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
 
     public void PrepareScenarioEV(Scenario scenario) {
         // --- Preparazione Scenario ---
@@ -73,7 +87,7 @@ public class CustomModule extends AbstractModule {
                                 scenario.getVehicles(),
                                 scenario.getPopulation().getPersons());
 
-        System.out.println("✅ Modulo Custom: Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
+        log.info("✅ Modulo Custom: Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
     }
 
 
@@ -149,9 +163,13 @@ public class CustomModule extends AbstractModule {
             QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds);
             addEventHandlerBinding().toInstance(debugHandler);
         }
+        
+        bind(SimulationEventPublisher.class)
+            .annotatedWith(Names.named("MatsimCustomPublisher"))
+            .toInstance(eventPublisher); 
+
+        log.info("✅ Modulo Custom installato con successo");
     }
-
-
 
     public EvFleetManager getEvFleetManager() {
         return evFleetManager;

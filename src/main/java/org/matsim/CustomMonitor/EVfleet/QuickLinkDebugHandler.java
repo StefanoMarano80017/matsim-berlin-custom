@@ -6,11 +6,15 @@ import org.matsim.api.core.v01.events.LinkEnterEvent;
 import org.matsim.api.core.v01.events.VehicleEntersTrafficEvent;
 import org.matsim.api.core.v01.events.handler.LinkEnterEventHandler;
 import org.matsim.api.core.v01.events.handler.VehicleEntersTrafficEventHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.api.core.v01.Id;
 import org.matsim.vehicles.Vehicle;
 
+
 public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEntersTrafficEventHandler {
 
+    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
     private final Set<Id<Vehicle>> electricVehicleIds;
 
     public QuickLinkDebugHandler(Set<Id<Vehicle>> electricVehicleIds) {
@@ -21,7 +25,7 @@ public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEnte
     @Override
     public void handleEvent(LinkEnterEvent event) {
         if (electricVehicleIds.contains(event.getVehicleId())) {
-            System.out.printf("Veicolo %s entra link %s al tempo %.0f%n",
+            log.debug("Veicolo %s entra link %s al tempo %.0f%n",
                     event.getVehicleId(),
                     event.getLinkId(),
                     event.getTime());
@@ -31,11 +35,10 @@ public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEnte
     @Override
     public void handleEvent(VehicleEntersTrafficEvent event) {
         if (event.getVehicleId().toString().startsWith("EV_")) {
-            System.out.println("--- EV DEBUG ---");
-            System.out.println("Veicolo EV " + event.getVehicleId() + 
-                               " ha iniziato il viaggio sul link " + event.getLinkId() + 
-                               " al tempo " + event.getTime());
-            System.out.println("--- FINE DEBUG ---");
+           log.debug("Veicolo %s ha iniziato il viaggio sul link %s al tempo %.0f%n", 
+                    event.getVehicleId(), 
+                    event.getLinkId(),
+                    event.getTime());
         }
     }
 }

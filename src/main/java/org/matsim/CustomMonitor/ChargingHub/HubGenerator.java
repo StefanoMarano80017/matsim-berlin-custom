@@ -1,5 +1,6 @@
 package org.matsim.CustomMonitor.ChargingHub;
 
+import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -12,7 +13,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class HubGenerator {
+
+    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
 
     private final Network network;
     private final ChargingInfrastructureSpecification infrastructureSpec;
@@ -29,7 +35,8 @@ public class HubGenerator {
         try (BufferedReader reader = Files.newBufferedReader(csvFile)) {
 
             String header = reader.readLine(); // skip header
-            if (header == null) return;
+            if (header == null)
+                return;
 
             String line;
             int lineNumber = 1;
@@ -37,14 +44,14 @@ public class HubGenerator {
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
 
-                if (line.trim().isEmpty()) continue; // skip blank lines
+                if (line.trim().isEmpty())
+                    continue; // skip blank lines
 
                 // Support both "," and "\t"
                 String[] rawParts = line.split("[,\t]", -1);
 
                 if (rawParts.length < 5) {
-                    System.err.println("[HubGenerator] Riga ignorata (colonne insufficienti) line "
-                            + lineNumber + ": " + line);
+                    log.error("[HubGenerator] Riga ignorata (colonne insufficienti) line " + lineNumber + ": " + line);
                     continue;
                 }
 
@@ -60,11 +67,11 @@ public class HubGenerator {
                     int nColonnine = parseIntSafe(parts[2], 1);
                     String type = parts[3];
                     double power = parseDoubleSafe(parts[4], 11.0);
-                    double powerW = power * 1000.0; 
+                    double powerW = power * 1000.0;
                     // Validate link existence
                     Link link = network.getLinks().get(Id.createLinkId(linkId));
                     if (link == null) {
-                        System.err.println("[HubGenerator] Link non trovato: " + linkId
+                        log.error("[HubGenerator] Link non trovato: " + linkId
                                 + " (riga " + lineNumber + ")");
                         continue;
                     }
@@ -77,21 +84,20 @@ public class HubGenerator {
                         Attributes attrs = new AttributesImpl();
                         attrs.putAttribute("hubId", hubId);
 
-                        ImmutableChargerSpecification chargerSpec =
-                                ImmutableChargerSpecification.newBuilder()
-                                        .id(Id.create(chargerId, Charger.class))
-                                        .linkId(link.getId())
-                                        .chargerType(type)
-                                        .plugPower(powerW)
-                                        .plugCount(1) // 1 plug per colonnina
-                                        .attributes(attrs)
-                                        .build();
+                        ImmutableChargerSpecification chargerSpec = ImmutableChargerSpecification.newBuilder()
+                                .id(Id.create(chargerId, Charger.class))
+                                .linkId(link.getId())
+                                .chargerType(type)
+                                .plugPower(powerW)
+                                .plugCount(1) // 1 plug per colonnina
+                                .attributes(attrs)
+                                .build();
 
                         infrastructureSpec.addChargerSpecification(chargerSpec);
                     }
 
                 } catch (Exception ex) {
-                    System.err.println("[HubGenerator] Errore parsing riga "
+                    log.error("[HubGenerator] Errore parsing riga "
                             + lineNumber + ": " + line);
                     ex.printStackTrace();
                 }
@@ -107,8 +113,7 @@ public class HubGenerator {
         try {
             return Integer.parseInt(s.trim());
         } catch (Exception ex) {
-            System.err.println("[HubGenerator] Warning: valore intero malformato \"" + s
-                    + "\" -> uso fallback=" + fallback);
+            log.error("[HubGenerator] Warning: valore intero malformato \"" + s + "\" -> uso fallback=" + fallback);
             return fallback;
         }
     }
@@ -117,8 +122,7 @@ public class HubGenerator {
         try {
             return Double.parseDouble(s.trim());
         } catch (Exception ex) {
-            System.err.println("[HubGenerator] Warning: valore double malformato \"" + s
-                    + "\" -> uso fallback=" + fallback);
+            log.error("[HubGenerator] Warning: valore double malformato \"" + s + "\" -> uso fallback=" + fallback);
             return fallback;
         }
     }

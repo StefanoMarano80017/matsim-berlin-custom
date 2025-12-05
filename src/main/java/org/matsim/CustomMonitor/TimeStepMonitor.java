@@ -1,5 +1,7 @@
 package org.matsim.CustomMonitor;
 
+import java.util.Map;
+
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.contrib.ev.fleet.ElectricFleet;
@@ -8,6 +10,7 @@ import org.matsim.core.mobsim.framework.events.MobsimInitializedEvent;
 import org.matsim.core.mobsim.framework.listeners.MobsimBeforeSimStepListener;
 import org.matsim.core.mobsim.framework.listeners.MobsimInitializedListener;
 import org.matsim.core.mobsim.qsim.QSim;
+import org.springboot.websocket.SimulationEventPublisher;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -20,15 +23,20 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
     private double lastUpdate = 0.0;
     private QSim qSim;
 
+    private final SimulationEventPublisher publisher; // publisher specifico
+
     @Inject
     public TimeStepMonitor(
         EvFleetManager evFleetManager, 
         HubManager hubManager, 
-        @Named("timeStepMonitorStep") double stepSize) 
+        @Named("timeStepMonitorStep") double stepSize,
+        @Named("MatsimCustomPublisher") SimulationEventPublisher publisher
+    ) 
     {
         this.evFleetManager = evFleetManager;
         this.hubManager = hubManager;
         this.stepSize = stepSize;
+        this.publisher = publisher;
     }
 
     @Override
@@ -62,8 +70,15 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
             System.out.println("[TimeStepMonitor] Hub occupazione: " + hubManager.getHubOccupancyMap().toString());
             System.out.println("[TimeStepMonitor] Hub energia: " + hubManager.getHubEnergyMap().toString());
 
-            // TODO: chiamata agente RL
-            // rlAgent.updatePolicy(evFleetManager, hubManager);
+            // Pubblico evento
+            Map<String, Object> data = Map.of(
+                "time", simTime,
+                "hubOccupancy", hubManager.getHubOccupancyMap(),
+                "hubEnergy", hubManager.getHubEnergyMap()
+            );
+
+            publisher.publish(data);
+            
         }
     }
 
