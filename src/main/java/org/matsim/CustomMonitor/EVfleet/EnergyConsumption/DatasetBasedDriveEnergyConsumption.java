@@ -1,5 +1,6 @@
-package org.matsim.CustomMonitor.EVfleet;
+package org.matsim.CustomMonitor.EVfleet.EnergyConsumption;
 
+import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;

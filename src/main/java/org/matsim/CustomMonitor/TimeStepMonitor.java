@@ -2,6 +2,7 @@ package org.matsim.CustomMonitor;
 
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
+import org.matsim.contrib.ev.fleet.ElectricFleet;
 import org.matsim.core.mobsim.framework.events.MobsimBeforeSimStepEvent;
 import org.matsim.core.mobsim.framework.events.MobsimInitializedEvent;
 import org.matsim.core.mobsim.framework.listeners.MobsimBeforeSimStepListener;
@@ -17,11 +18,14 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
     private final HubManager hubManager;
     private double stepSize = 300.0; //5 minuti
     private double lastUpdate = 0.0;
-
     private QSim qSim;
 
     @Inject
-    public TimeStepMonitor(EvFleetManager evFleetManager, HubManager hubManager, @Named("timeStepMonitorStep") double stepSize) {
+    public TimeStepMonitor(
+        EvFleetManager evFleetManager, 
+        HubManager hubManager, 
+        @Named("timeStepMonitorStep") double stepSize) 
+    {
         this.evFleetManager = evFleetManager;
         this.hubManager = hubManager;
         this.stepSize = stepSize;
@@ -39,16 +43,18 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
     @Override
     public void notifyMobsimBeforeSimStep(@SuppressWarnings("rawtypes") MobsimBeforeSimStepEvent event) {
         double simTime = event.getSimulationTime();
-
         if (qSim == null) return;
-
         if (simTime - lastUpdate >= stepSize) {
             lastUpdate = simTime;
-
             // Aggiornamento Soc Veicoli 
-            evFleetManager.updateSocFromQSim(qSim);
-            System.out.println("[TimeStepMonitor] Stato veicoli aggiornato.");
-
+            try{
+                ElectricFleet electricFleet = getElectricFleetFromQSim();
+                evFleetManager.updateSoc(electricFleet);
+                System.out.println("[TimeStepMonitor] Stato veicoli aggiornato.");
+            }catch(Exception e) {
+                System.out.println("[TimeStepMonitor] Errore durante l'aggiornamento dello stato veicoli: " + e.getMessage());
+            }
+            
             // Leggo stato hub 
             hubManager.getHubOccupancyMap();       // leggi stato hub
             hubManager.getHubEnergyMap();          // leggi energia hub
@@ -58,9 +64,14 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
 
             // TODO: chiamata agente RL
             // rlAgent.updatePolicy(evFleetManager, hubManager);
-
-            System.out.printf("[%.0f] Monitor aggiornato: SOC medio=%.2f%n", simTime, evFleetManager.calculateAverageSoc());
         }
     }
 
+    private ElectricFleet getElectricFleetFromQSim() {
+        try {
+            return qSim.getChildInjector().getInstance(ElectricFleet.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 }

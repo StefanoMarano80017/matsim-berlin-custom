@@ -1,5 +1,6 @@
-package org.matsim.CustomMonitor.EVfleet;
+package org.matsim.CustomMonitor.EVfleet.EnergyConsumption;
 
+import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.fleet.ElectricVehicle;
 import javax.inject.Inject;
