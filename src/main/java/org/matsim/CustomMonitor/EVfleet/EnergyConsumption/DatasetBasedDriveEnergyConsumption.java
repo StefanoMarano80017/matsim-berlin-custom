@@ -63,7 +63,7 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
         // Aggiorna la distanza percorsa nel nostro EvModel per scopi di monitoraggio
         evData.addDistanceTraveled(distanceMeters);
         // MATSim si aspetta che il consumo sia espresso in un valore POSITIVO
-        log.info("Consumo Veicolo aggiornato");
+        log.debug("Consumo Veicolo aggiornato");
         return totalConsumptionJoules;
     }
 }

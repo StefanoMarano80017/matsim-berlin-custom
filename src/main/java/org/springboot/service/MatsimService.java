@@ -46,7 +46,7 @@ public class MatsimService {
             }
         });
 
-        simulationBridge.SimpleTextPublish("Simulazione Avviata");
+        simulationBridge.publishSimpleText("Simulazione Avviata");
         return "Simulazione avviata.";
     }
 

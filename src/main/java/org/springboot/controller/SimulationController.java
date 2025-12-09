@@ -47,7 +47,7 @@ public class SimulationController {
     
     @PostMapping("/test")
     public ResponseEntity<String> test() {
-        simulationBridge.SimpleTextPublish("Test connessione");
+        simulationBridge.publishSimpleText("Test connessione");
         return ResponseEntity.ok("Scenario MATSim avviato!");
     }
 }

@@ -65,12 +65,6 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
                 evFleetManager.updateSoc(electricFleet);
                 log.info("[TimeStepMonitor] Stato veicoli aggiornato.");
                 // Pubblico evento
-                this.simulationBridge.HubStatusPublish(
-                    hubManager.getHubOccupancyMap(), 
-                    hubManager.getHubEnergyMap(),
-                    simTime
-                );
-
                 List<VehicleStatus> vehicleStatuses 
                     = evFleetManager.getFleet().values().stream()
                     .map(v -> new VehicleStatus(
@@ -82,11 +76,17 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
                     ))
                     .collect(Collectors.toList());
 
-                this.simulationBridge.VehicleStatusPublish(vehicleStatuses, simTime);
+                this.simulationBridge.publishTimeStep(
+                    vehicleStatuses, 
+                    hubManager.getHubOccupancyMap(), 
+                    hubManager.getHubEnergyMap(),
+                    simTime
+                );
                 
             }catch(Exception e) {
                 log.error("[TimeStepMonitor] Errore durante l'aggiornamento dello stato veicoli: " + e.getMessage());
-            }            
+            }
+            
         }
     }
 
