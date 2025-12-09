@@ -14,7 +14,7 @@ import org.matsim.vehicles.Vehicle;
 
 public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEntersTrafficEventHandler {
 
-    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
+    private static final Logger log = LogManager.getLogger(QuickLinkDebugHandler.class);
     private final Set<Id<Vehicle>> electricVehicleIds;
 
     public QuickLinkDebugHandler(Set<Id<Vehicle>> electricVehicleIds) {

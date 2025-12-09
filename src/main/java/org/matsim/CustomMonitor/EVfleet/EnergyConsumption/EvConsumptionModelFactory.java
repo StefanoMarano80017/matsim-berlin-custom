@@ -1,5 +1,7 @@
 package org.matsim.CustomMonitor.EVfleet.EnergyConsumption;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.fleet.ElectricVehicle;
@@ -11,6 +13,8 @@ import javax.inject.Inject;
  * che viene iniettato al momento del binding nel Controler (tramite toInstance).
  */
 public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory {
+
+    private static final Logger log = LogManager.getLogger(EvConsumptionModelFactory.class);
 
     private final EvFleetManager evFleetManager;
 
@@ -26,15 +30,12 @@ public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory
 
     @Override
     public DriveEnergyConsumption create(ElectricVehicle electricVehicle) {
-        System.out.println("FACTORY CHIAMATA: Creazione modello di consumo per veicolo " + electricVehicle.getId());
-
-        // EvFleetManager contiene il veicolo con questo ID?
+        log.info("Creazione modello di consumo per veicolo " + electricVehicle.getId());
         if (this.evFleetManager.getFleet().containsKey(electricVehicle.getId())) {
-            System.out.println("Veicolo Trovato nel custom Manager.");
+            log.info("Veicolo Trovato nel custom Manager.");
         } else {
-            System.err.println("!!! ATTENZIONE: Veicolo non trovato in EvFleetManager !!!");
+            log.error("Veicolo non trovato in EvFleetManager");
         }
-
         // Restituisce l'istanza del tuo modello di consumo personalizzato.
         return new DatasetBasedDriveEnergyConsumption(electricVehicle, this.evFleetManager);
     }

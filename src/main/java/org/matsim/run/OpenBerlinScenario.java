@@ -30,7 +30,7 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.springboot.websocket.SimulationEventPublisher;
-import org.springboot.websocket.SimulationWebSocketService;
+import org.springframework.context.ApplicationContext;
 
 import picocli.CommandLine;
 import playground.vsp.ev.UrbanEVConfigGroup;
@@ -41,15 +41,17 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
+import org.matsim.CustomMonitor.SimulationWebSocketModule;
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
 
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
 
+    private static ApplicationContext applicationContext; // Il contesto Spring
+
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
-    private SimulationEventPublisher eventPublisher;
 
     @CommandLine.Mixin
     private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
@@ -59,24 +61,17 @@ public class OpenBerlinScenario extends MATSimApplication {
     @CommandLine.Option(names = "--plan-selector", description = "Plan selector to use.", defaultValue = DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
     private String planSelector;
 
+   
     public OpenBerlinScenario() {
         super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
     }
-
-    public OpenBerlinScenario(SimulationEventPublisher eventPublisher) {
-        super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
-        this.eventPublisher = Objects.requireNonNull(eventPublisher);
+    
+    /**
+     * Metodo statico pubblico per impostare il contesto Spring dall'esterno
+     */
+    public static void setSpringContext(ApplicationContext context) {
+        applicationContext = context;
     }
-
-    public static void main(String[] args) {
-        MATSimApplication.run(OpenBerlinScenario.class, args);
-    }
-
-    public void RunSimulation(){
-        String[] arg = new String[] { "--1pct" };
-        MATSimApplication.runWithDefaults(OpenBerlinScenario.class, arg);
-    }
-
 
     @SuppressWarnings("deprecation")
     @Override
@@ -214,8 +209,7 @@ public class OpenBerlinScenario extends MATSimApplication {
             hubPath, 
             evDatasetPath, 
             1, 0.6, 0.15, 
-            true, 
-            this.eventPublisher
+            true
         );
         customModule.PrepareScenarioEV(scenario);
     }
@@ -225,6 +219,15 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new UrbanEVModule());
 
         if (customModule != null) {
+            if (applicationContext != null) {
+                controler.addOverridingModule(
+                    new SimulationWebSocketModule(applicationContext)
+                );
+            } else {
+                throw new IllegalStateException(
+                    "SPRING_CONTEXT_STATIC non è stato impostato. La simulazione non può avviare il bridge WebSocket."
+                );
+            }
             controler.addOverridingModule(customModule);
         } else{
             throw new RuntimeException("CustomModule non inizializzato correttamente.");

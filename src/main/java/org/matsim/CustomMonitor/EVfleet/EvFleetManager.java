@@ -81,7 +81,7 @@ public class EvFleetManager{
     }
 
     // ----------------------------------------------------
-    // SIMULATION UPDATE (immutato)
+    // SIMULATION UPDATE 
     // ----------------------------------------------------
     public void updateSoc(ElectricFleet electricFleet) {
         if (electricFleet == null) throw new IllegalArgumentException("ElectricFleet is null");
@@ -89,7 +89,10 @@ public class EvFleetManager{
             Id<Vehicle> qsimId = Id.create(evModel.getVehicleId().toString() + "_car", Vehicle.class);
             var ev = electricFleet.getElectricVehicles().get(qsimId);
             if (ev != null) {
-                evModel.updateDynamicState(ev.getBattery().getSoc(), ev.getBattery().getCharge());
+                evModel.updateDynamicState(
+                    ev.getBattery().getSoc(),
+                    ev.getBattery().getCharge()
+                );
             }
         }
     }

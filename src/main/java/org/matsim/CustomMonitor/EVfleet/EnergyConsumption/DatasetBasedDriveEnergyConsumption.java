@@ -1,6 +1,9 @@
 package org.matsim.CustomMonitor.EVfleet.EnergyConsumption;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
+import org.matsim.CustomMonitor.EVfleet.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
@@ -14,6 +17,9 @@ import org.matsim.contrib.ev.fleet.ElectricVehicle;
  * (accelerazione, pendenza) ma utilizzando il dato di consumo medio reale.
  */
 public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumption {
+
+    private static final Logger log = LogManager.getLogger(DatasetBasedDriveEnergyConsumption.class);
+
     // Fattore di conversione: da kWh/km a Joule/metro (J/m)
     // 1 kWh = 3.6e6 Joule
     // 1 km = 1000 metri
@@ -43,7 +49,7 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
             // Questo veicolo EV non fa parte della nostra flotta monitorata.
             // Restituisce 0, affidandosi al modello di consumo di fallback di MATSim 
             // se ce n'è uno, o ignorando il consumo.
-            System.err.println("WARN: Veicolo " + electricVehicle.getId() + " non trovato in EvFleetManager. Consumo impostato a 0.");
+            log.error("WARN: Veicolo " + electricVehicle.getId() + " non trovato in EvFleetManager. Consumo impostato a 0.");
             return 0.0;
         }
 
@@ -57,6 +63,7 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
         // Aggiorna la distanza percorsa nel nostro EvModel per scopi di monitoraggio
         evData.addDistanceTraveled(distanceMeters);
         // MATSim si aspetta che il consumo sia espresso in un valore POSITIVO
+        log.info("Consumo Veicolo aggiornato");
         return totalConsumptionJoules;
     }
 }

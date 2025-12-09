@@ -1,5 +1,9 @@
 package org.springboot.websocket;
 
+import java.io.IOException;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -10,21 +14,24 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class SimulationWebSocketHandler extends TextWebSocketHandler {
 
-    private final SimulationWebSocketService publisher;
-
-    public SimulationWebSocketHandler(SimulationWebSocketService publisher) {
-        this.publisher = publisher;
-    }
+    private final Set<WebSocketSession> sessions = ConcurrentHashMap.newKeySet();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
-        publisher.registerSession(session);
-        log.info("Client connected: " + session.getId());
+        sessions.add(session);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        publisher.unregisterSession(session);
-        log.info("Client disconnected: " + session.getId());
+        sessions.remove(session);
     }
+
+    public void broadcast(String message) throws IOException {
+        for (WebSocketSession session : sessions) {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(message));
+            }
+        }
+    }
+
 }

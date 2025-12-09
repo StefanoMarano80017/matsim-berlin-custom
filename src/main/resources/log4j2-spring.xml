@@ -1,47 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN">
-    
     <Properties>
-        <!-- Default log level -->
         <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Property>
     </Properties>
 
     <Appenders>
-        <!-- MATSim core appender -->
-        <Console name="MATSIM_CORE" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [MATSim-Core] %logger{36} - %msg%n"/>
-        </Console>
-
-        <!-- MATSim custom appender -->
-        <Console name="MATSIM_CUSTOM" target="SYSTEM_OUT">
-            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [MATSim-Custom] %logger{36} - %msg%n"/>
-        </Console>
-
-        <!-- Spring Boot appender -->
-        <Console name="SPRINGBOOT" target="SYSTEM_OUT">
+        <!-- Console principale per Spring -->
+        <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [SpringBoot] %logger{36} - %msg%n"/>
         </Console>
+
+        <!-- File separato per MATSim -->
+        <File name="MatsimFile" fileName="logs/matsim.log">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level [MATSim] %logger{36} - %msg%n"/>
+        </File>
     </Appenders>
 
     <Loggers>
-        <!-- MATSim core -->
-        <Logger name="org.matsim" additivity="false" level="OFF">
-            <AppenderRef ref="MATSIM_CORE"/>
+        <!-- MATSim core log solo su file, livello WARN -->
+        <Logger name="org.matsim" level="NONE" additivity="false">
+            <AppenderRef ref="MatsimFile"/>
         </Logger>
 
-        <!-- MATSim custom -->
+        <Logger name="org.matsim.application" level="NONE" additivity="false">
+            <AppenderRef ref="MatsimFile"/>
+        </Logger>
+
+        <Logger name="org.matsim.core" level="NONE" additivity="false">
+            <AppenderRef ref="MatsimFile"/>
+        </Logger>
+
+        <Logger name="com.ctc.wstx" level="NONE" additivity="false">
+            <AppenderRef ref="MatsimFile"/>
+        </Logger>
+
+        <!-- MATSim monitor custom (DEBUG) -->
         <Logger name="org.matsim.CustomMonitor" level="DEBUG" additivity="false">
-            <AppenderRef ref="MATSIM_CUSTOM"/>
+            <AppenderRef ref="MatsimFile"/>
         </Logger>
 
-        <!-- Spring Boot -->
+        <!-- Spring Boot log -->
         <Logger name="org.springboot" level="INFO" additivity="false">
-            <AppenderRef ref="SPRINGBOOT"/>
+            <AppenderRef ref="Console"/>
         </Logger>
 
-        <!-- Root fallback -->
+        <!-- Root log fallback -->
         <Root level="WARN">
-            <AppenderRef ref="SPRINGBOOT"/>
+            <AppenderRef ref="Console"/>
         </Root>
     </Loggers>
 </Configuration>
