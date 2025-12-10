@@ -27,9 +27,9 @@ import org.matsim.core.replanning.strategies.DefaultPlanStrategiesModule;
 import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutilityFactory;
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
+import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
-import org.springboot.websocket.SimulationEventPublisher;
 import org.springframework.context.ApplicationContext;
 
 import picocli.CommandLine;
@@ -39,16 +39,18 @@ import playground.vsp.ev.UrbanEVModule;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Objects;
 
-import org.matsim.CustomMonitor.SimulationWebSocketModule;
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
+import org.matsim.CustomMonitor.ConfigRun.SimulationWebSocketModule;
 
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
 
     private static ApplicationContext applicationContext; // Il contesto Spring
+    private CustomModule customModule;
+    private static Path csvPath_hub;
+    private static Path csvPath_ev;
 
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
@@ -56,16 +58,34 @@ public class OpenBerlinScenario extends MATSimApplication {
     @CommandLine.Mixin
     private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
     protected Double sampleSizeStatic;
-    private CustomModule customModule;
 
     @CommandLine.Option(names = "--plan-selector", description = "Plan selector to use.", defaultValue = DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
     private String planSelector;
 
-   
     public OpenBerlinScenario() {
         super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
     }
-    
+
+    public void runScenario(Double sampleSize) {
+        this.sampleSizeStatic = sampleSize;
+        // --- 1. Carica Config dal file di default ---
+        Config config = ConfigUtils.loadConfig(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        
+        // --- 2. Applica tutte le personalizzazioni di prepareConfig ---
+        config = prepareConfig(config);
+
+        // --- 3. Crea lo Scenario dal Config ---
+        Scenario scenario = ScenarioUtils.loadScenario(config);
+        prepareScenario(scenario);
+
+        // --- 4. Crea il Controler e prepara moduli ---
+        Controler controler = new Controler(scenario);
+        prepareControler(controler);
+
+        // --- 5. Avvia simulazione ---
+        controler.run();
+    }
+
     /**
      * Metodo statico pubblico per impostare il contesto Spring dall'esterno
      */
@@ -76,22 +96,11 @@ public class OpenBerlinScenario extends MATSimApplication {
     @SuppressWarnings("deprecation")
     @Override
     protected Config prepareConfig(Config config) {
-
-        Path csvPath_hub = Path.of("input/CustomInput/charging_hub.csv");
-        if (!Files.exists(csvPath_hub)) {
-            throw new RuntimeException("File HUB non trovato: " + csvPath_hub.toAbsolutePath());
-        }
-
-        Path csvPath_ev = Path.of("input/CustomInput/ev-dataset.csv");
-        if (!Files.exists(csvPath_ev)) {
-            throw new RuntimeException("File EV non trovato: " + csvPath_ev.toAbsolutePath());
-        }
-
         // --- Creazione EV config---
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
         evConfig.chargersFile = "fake_chargers.xml"; // Placeholder, i charger saranno gestiti dal HubManager
         UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule( config, UrbanEVConfigGroup.class );
-		urbanEVConfig.setCriticalSOC(0.4);
+		urbanEVConfig.setCriticalSOC(0.2);
 		config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
 		//register charging interaction activities for car
 		config.scoring().addActivityParams(
@@ -135,11 +144,11 @@ public class OpenBerlinScenario extends MATSimApplication {
         RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
         Activities.addScoringParams(config, true);
 
-        // Required for all calibration strategies
-		for (String subpopulation : List.of("person", "freight", "goodsTraffic", "commercialPersonTraffic", "commercialPersonTraffic_service")) {
+        // Required for all calibration strategies        s
+        for (String subpopulation : List.of("person", "freight", "goodsTraffic", "commercialPersonTraffic", "commercialPersonTraffic_service")) {
 			config.replanning().addStrategySettings(
 				new ReplanningConfigGroup.StrategySettings()
-					.setStrategyName(planSelector)
+					.setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
 					.setWeight(1.0)
 					.setSubpopulation(subpopulation)
 			);
@@ -223,11 +232,7 @@ public class OpenBerlinScenario extends MATSimApplication {
                 controler.addOverridingModule(
                     new SimulationWebSocketModule(applicationContext)
                 );
-            } else {
-                throw new IllegalStateException(
-                    "SPRING_CONTEXT_STATIC non è stato impostato. La simulazione non può avviare il bridge WebSocket."
-                );
-            }
+            } 
             controler.addOverridingModule(customModule);
         } else{
             throw new RuntimeException("CustomModule non inizializzato correttamente.");
@@ -238,6 +243,21 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new QsimTimingModule());
         controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
+    }
+
+
+    public static void setEvCSV(Path csvPath){
+        if (!Files.exists(csvPath)) {
+            throw new RuntimeException("File EV non trovato: " + csvPath.toAbsolutePath());
+        }
+        csvPath_hub = csvPath;
+    }
+
+    public static void setHubCSV(Path csvPath){
+        if (!Files.exists(csvPath)) {
+            throw new RuntimeException("File HUB non trovato: " + csvPath.toAbsolutePath());
+        }
+        csvPath_hub = csvPath;
     }
 
     /**

@@ -12,5 +12,6 @@ public interface SimulationEventPublisher {
      * @param <T> Il tipo di payload (es. SimpleTextPayload, SimulationPayload, ecc.).
      * @param message L'oggetto WebSocketUpdate contenente il payload specifico.
      */
+    @SuppressWarnings("hiding")
     public <T> void publish(WebSocketUpdate<T> message);
 }

@@ -66,6 +66,20 @@ public class EvFleetManager{
                 model
             )
         );
+
+        // --- INIZIO: Log del contenuto della mappa 'fleet' (EvModel) ---
+            log.info("--- Log Veicoli EvModel nel Fleet (SimTime:  ");
+            // Accediamo alla mappa (fleet) tramite getFleet()
+            getFleet().forEach((id, v) -> {
+                // 'v' è l'oggetto EvModel associato all'Id 'id'
+                log.info(
+                    v.getDistanceTraveledKm()         
+                );
+            });
+            log.info("---------------------------------------------------------------");
+            // --- FINE: Log del contenuto della mappa 'fleet' (EvModel) ---
+
+
         // 3. Genera veicoli MATSim nello Scenario
         EVmodels.forEach(model ->
             vehicleFactory.createMatsimVehicle(

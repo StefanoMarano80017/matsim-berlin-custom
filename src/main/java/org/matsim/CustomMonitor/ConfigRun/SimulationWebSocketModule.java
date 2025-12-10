@@ -1,4 +1,4 @@
-package org.matsim.CustomMonitor;
+package org.matsim.CustomMonitor.ConfigRun;
 
 import org.matsim.core.controler.AbstractModule;
 import org.springboot.websocket.SimulationBridge;

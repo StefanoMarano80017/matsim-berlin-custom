@@ -3,6 +3,8 @@ package org.matsim.CustomMonitor;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import javax.annotation.Nullable;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
@@ -35,7 +37,7 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
         EvFleetManager evFleetManager, 
         HubManager hubManager, 
         @Named("timeStepMonitorStep") double stepSize, 
-        SimulationBridge simulationBridge
+        @Nullable SimulationBridge simulationBridge
     ) 
     {
         this.evFleetManager = evFleetManager;
@@ -63,26 +65,8 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
             try{
                 ElectricFleet electricFleet = getElectricFleetFromQSim();
                 evFleetManager.updateSoc(electricFleet);
-                log.info("[TimeStepMonitor] Stato veicoli aggiornato.");
                 // Pubblico evento
-                List<VehicleStatus> vehicleStatuses 
-                    = evFleetManager.getFleet().values().stream()
-                    .map(v -> new VehicleStatus(
-                        v.getVehicleId().toString(),
-                        v.getCurrentSoc(),
-                        v.getDistanceTraveledKm(),
-                        v.getCurrentEnergyJoules(),
-                        v.isCharging()
-                    ))
-                    .collect(Collectors.toList());
-
-                this.simulationBridge.publishTimeStep(
-                    vehicleStatuses, 
-                    hubManager.getHubOccupancyMap(), 
-                    hubManager.getHubEnergyMap(),
-                    simTime
-                );
-                
+                publishEvent(simTime);
             }catch(Exception e) {
                 log.error("[TimeStepMonitor] Errore durante l'aggiornamento dello stato veicoli: " + e.getMessage());
             }
@@ -95,6 +79,27 @@ public class TimeStepMonitor implements MobsimBeforeSimStepListener, MobsimIniti
             return qSim.getChildInjector().getInstance(ElectricFleet.class);
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    private void publishEvent(double simTime){
+        if(this.simulationBridge != null){
+            List<VehicleStatus> vehicleStatuses = 
+                evFleetManager.getFleet().values().stream().map(v -> new VehicleStatus(
+                    v.getVehicleId().toString(),
+                    v.getCurrentSoc(),
+                    v.getDistanceTraveledKm(),
+                    v.getCurrentEnergyJoules(),
+                    v.isCharging()
+                ))
+                .collect(Collectors.toList());
+
+            this.simulationBridge.publishTimeStep(
+                vehicleStatuses, 
+                hubManager.getHubOccupancyMap(), 
+                hubManager.getHubEnergyMap(),
+                simTime
+            );
         }
     }
 }

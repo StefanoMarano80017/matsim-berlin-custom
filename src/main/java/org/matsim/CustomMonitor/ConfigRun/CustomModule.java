@@ -41,7 +41,6 @@ public class CustomModule extends AbstractModule {
     private final EvFleetManager evFleetManager;
     private final ChargingInfrastructureSpecification infraSpec;
 
-    private final Scenario scenario;
     private final Path chargingHubPath;
     private final Path evDatasetPath;
     private final int sampleSize;
@@ -59,15 +58,14 @@ public class CustomModule extends AbstractModule {
         boolean debug
     ) {
         this.chargingHubPath = chargingHubPath;
-        this.evDatasetPath = evDatasetPath;
-        this.sampleSize = sampleSize;
-        this.socMean = socMean;
-        this.socStdDev = socStdDev;
-        this.scenario = scenario;
-        this.infraSpec = new ChargingInfrastructureSpecificationDefaultImpl();
-        this.hubManager = new HubManager(scenario.getNetwork(), infraSpec);
-        this.evFleetManager = new EvFleetManager();
-        this.debug = debug;
+        this.evDatasetPath   = evDatasetPath;
+        this.sampleSize      = sampleSize;
+        this.socMean         = socMean;
+        this.socStdDev       = socStdDev;
+        this.infraSpec       = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.hubManager      = new HubManager(scenario.getNetwork(), infraSpec);
+        this.evFleetManager  = new EvFleetManager();
+        this.debug           = debug;
     }
 
 
@@ -75,10 +73,11 @@ public class CustomModule extends AbstractModule {
         // --- Preparazione Scenario ---
         initializeEvFleetManager(scenario);
         loadChargingHubs();
-        registerDefaultVehicles(scenario.getVehicles().getFactory(),
-                                scenario.getVehicles(),
-                                scenario.getPopulation().getPersons());
-
+        registerDefaultVehicles(
+            scenario.getVehicles().getFactory(),
+            scenario.getVehicles(),
+            scenario.getPopulation().getPersons()
+        );
         log.info("Modulo Custom: Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
     }
 
@@ -95,14 +94,27 @@ public class CustomModule extends AbstractModule {
         return evFleetManager;
     }
 
-    private void registerDefaultVehicles(VehiclesFactory vehicleFactory, Vehicles vehicles, Map<Id<Person>, ? extends Person> persons) {
-        Id<Vehicle> walkVehicleId = createVehicleType(vehicleFactory, vehicles, TransportMode.walk,
-                Id.create("default_walk_type", VehicleType.class),
-                Id.create("default_walk_vehicle", Vehicle.class));
+    @SuppressWarnings("deprecation")
+    private void registerDefaultVehicles(
+        VehiclesFactory vehicleFactory,
+        Vehicles vehicles, 
+        Map<Id<Person>, ? extends Person> persons
+    ) {
+        Id<Vehicle> walkVehicleId = createVehicleType(
+            vehicleFactory, 
+            vehicles, 
+            TransportMode.walk,
+            Id.create("default_walk_type", VehicleType.class),
+            Id.create("default_walk_vehicle", Vehicle.class)
+        );
 
-        Id<Vehicle> ptVehicleId = createVehicleType(vehicleFactory, vehicles, TransportMode.pt,
-                Id.create("default_pt_type", VehicleType.class),
-                Id.create("default_pt_vehicle", Vehicle.class));
+        Id<Vehicle> ptVehicleId = createVehicleType(
+            vehicleFactory, 
+            vehicles, 
+            TransportMode.pt,
+            Id.create("default_pt_type", VehicleType.class),
+            Id.create("default_pt_vehicle", Vehicle.class)
+        );
 
         persons.values().forEach(person -> {
             Map<String, Id<Vehicle>> mode2Vehicle;
@@ -117,8 +129,13 @@ public class CustomModule extends AbstractModule {
         });
     }
 
-    private Id<Vehicle> createVehicleType(VehiclesFactory vehicleFactory, Vehicles vehicles, String networkMode,
-                                          Id<VehicleType> typeId, Id<Vehicle> vehicleId) {
+    private Id<Vehicle> createVehicleType(
+        VehiclesFactory vehicleFactory, 
+        Vehicles vehicles, 
+        String networkMode,
+        Id<VehicleType> typeId, 
+        Id<Vehicle> vehicleId
+    ) {
         VehicleType vehicleType = vehicleFactory.createVehicleType(typeId);
         vehicleType.setNetworkMode(networkMode);
         vehicles.addVehicleType(vehicleType);

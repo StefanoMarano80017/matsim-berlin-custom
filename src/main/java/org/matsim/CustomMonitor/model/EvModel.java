@@ -14,7 +14,7 @@ public class EvModel {
     private final double nominalCapacityKwh;
     private final double consumptionKwhPerKm;
     private final String batteryType;
-    private final int numberOfCells;
+    private final int    numberOfCells;
     private final double torqueNm;
     private final double topSpeedKmh;
     private final double rangeKm;
@@ -23,19 +23,18 @@ public class EvModel {
     private final String fastChargePort;
     private final double towingCapacityKg;
     private final double cargoVolumeL;
-    private final int seats;
+    private final int    seats;
     private final String drivetrain;
     private final String segment;
-    private final int lengthMm;
-    private final int widthMm;
-    private final int heightMm;
+    private final int    lengthMm;
+    private final int    widthMm;
+    private final int    heightMm;
     private final String carBodyType;
-
     // --- Dati dinamici (stato di simulazione) ---
-    private double currentSoc;          // 0.0-1.0
-    private double currentEnergyJoules; // Livello corrente in Joule
-    private double distanceTraveledKm;  // Distanza percorsa
-    private boolean isCharging;         // True se in ricarica
+    private double  currentSoc;           // 0.0-1.0
+    private double  currentEnergyJoules;  // Livello corrente in Joule
+    private double  distanceTraveledKm;   // Distanza percorsa
+    private boolean isCharging;           // True se in ricarica
 
     public EvModel(
             Id<Vehicle> vehicleId,
@@ -102,33 +101,32 @@ public class EvModel {
     }
 
     // --- Getter ---
-    public Id<Vehicle> getVehicleId() { return vehicleId; }
-    public String getManufacturer() { return manufacturer; }
-    public String getModel() { return model; }
-    public double getNominalCapacityKwh() { return nominalCapacityKwh; }
-    public double getConsumptionKwhPerKm() { return consumptionKwhPerKm; }
-    public String getBatteryType() { return batteryType; }
-    public int getNumberOfCells() { return numberOfCells; }
-    public double getTorqueNm() { return torqueNm; }
-    public double getTopSpeedKmh() { return topSpeedKmh; }
-    public double getRangeKm() { return rangeKm; }
-    public double getAcceleration0To100() { return acceleration0To100; }
-    public double getFastChargingPowerKwDc() { return fastChargingPowerKwDc; }
-    public String getFastChargePort() { return fastChargePort; }
-    public double getTowingCapacityKg() { return towingCapacityKg; }
-    public double getCargoVolumeL() { return cargoVolumeL; }
-    public int getSeats() { return seats; }
-    public String getDrivetrain() { return drivetrain; }
-    public String getSegment() { return segment; }
-    public int getLengthMm() { return lengthMm; }
-    public int getWidthMm() { return widthMm; }
-    public int getHeightMm() { return heightMm; }
-    public String getCarBodyType() { return carBodyType; }
-
-    public double getCurrentSoc() { return currentSoc; }
-    public double getCurrentEnergyJoules() { return currentEnergyJoules; }
-    public double getDistanceTraveledKm() { return distanceTraveledKm; }
-    public boolean isCharging() { return isCharging; }
+    public Id<Vehicle>  getVehicleId() { return vehicleId; }
+    public String       getManufacturer() { return manufacturer; }
+    public String       getModel() { return model; }
+    public double       getNominalCapacityKwh() { return nominalCapacityKwh; }
+    public double       getConsumptionKwhPerKm() { return consumptionKwhPerKm; }
+    public String       getBatteryType() { return batteryType; }
+    public int          getNumberOfCells() { return numberOfCells; }
+    public double       getTorqueNm() { return torqueNm; }
+    public double       getTopSpeedKmh() { return topSpeedKmh; }
+    public double       getRangeKm() { return rangeKm; }
+    public double       getAcceleration0To100() { return acceleration0To100; }
+    public double       getFastChargingPowerKwDc() { return fastChargingPowerKwDc; }
+    public String       getFastChargePort() { return fastChargePort; }
+    public double       getTowingCapacityKg() { return towingCapacityKg; }
+    public double       getCargoVolumeL() { return cargoVolumeL; }
+    public int          getSeats() { return seats; }
+    public String       getDrivetrain() { return drivetrain; }
+    public String       getSegment() { return segment; }
+    public int          getLengthMm() { return lengthMm; }
+    public int          getWidthMm() { return widthMm; }
+    public int          getHeightMm() { return heightMm; }
+    public String       getCarBodyType() { return carBodyType; }
+    public double       getCurrentSoc() { return currentSoc; }
+    public double       getCurrentEnergyJoules() { return currentEnergyJoules; }
+    public double       getDistanceTraveledKm() { return distanceTraveledKm; }
+    public boolean      isCharging() { return isCharging; }
 
 
     // ---- Setter ---

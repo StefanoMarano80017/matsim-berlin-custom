@@ -1,10 +1,10 @@
 package org.springboot.service;
 
+import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.matsim.application.MATSimApplication;
 import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -14,7 +14,7 @@ import org.springboot.websocket.SimulationBridge;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
-@Slf4j(topic = "org.springboot")
+@Slf4j(topic = "org.matsim")
 public class MatsimService {
 
     private final SimulationBridge simulationBridge;
@@ -51,7 +51,6 @@ public class MatsimService {
     }
 
     /**
-     *  NON è SAFE PER ORA
      * Tenta di arrestare la simulazione in esecuzione.
      * @return Stato del tentativo di arresto.
      */
@@ -71,15 +70,14 @@ public class MatsimService {
     public void runScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
         OpenBerlinScenario.setSpringContext(this.applicationContext);
-        String[] args = new String[] { 
-            "run", 
-            "--1pct" 
-        };
-
+        OpenBerlinScenario.setEvCSV(Path.of("input/CustomInput/ev-dataset.csv"));
+        OpenBerlinScenario.setHubCSV(Path.of("input/CustomInput/charging_hub.csv"));
         log.info("Avvio simulazione MATSim...");
         // MATSimApplication.run può lanciare una RuntimeException o una ExecutionException
         // che verrà catturata nel blocco runThread.
-        MATSimApplication.run(OpenBerlinScenario.class, args);
+        OpenBerlinScenario scenario = new OpenBerlinScenario();
+        scenario.runScenario(0.001);
+        //MATSimApplication.run(OpenBerlinScenario.class, args);
         log.info("Scenario MATSim completato!");
     }
 

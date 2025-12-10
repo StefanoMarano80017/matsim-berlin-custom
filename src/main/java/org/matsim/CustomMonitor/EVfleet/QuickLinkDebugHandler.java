@@ -25,7 +25,7 @@ public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEnte
     @Override
     public void handleEvent(LinkEnterEvent event) {
         if (electricVehicleIds.contains(event.getVehicleId())) {
-            log.debug("Veicolo %s entra link %s al tempo %.0f%n",
+            log.info("Veicolo %s entra link %s al tempo %.0f%n",
                     event.getVehicleId(),
                     event.getLinkId(),
                     event.getTime());
@@ -35,7 +35,7 @@ public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEnte
     @Override
     public void handleEvent(VehicleEntersTrafficEvent event) {
         if (event.getVehicleId().toString().startsWith("EV_")) {
-           log.debug("Veicolo %s ha iniziato il viaggio sul link %s al tempo %.0f%n", 
+           log.info("Veicolo %s ha iniziato il viaggio sul link %s al tempo %.0f%n", 
                     event.getVehicleId(), 
                     event.getLinkId(),
                     event.getTime());

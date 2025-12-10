@@ -16,6 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 @Component
 public class SimulationBridge implements SimulationEventPublisher {
@@ -27,7 +30,11 @@ public class SimulationBridge implements SimulationEventPublisher {
 
     public SimulationBridge(SimulationWebSocketHandler wsHandler) {
         this.wsHandler = wsHandler;
-        this.gson = new Gson();
+        this.gson = new GsonBuilder()
+                        .registerTypeAdapter(
+                            Double.class, (JsonSerializer<Double>) (src, typeOfSrc, context) -> new JsonPrimitive(Math.round(src * 100) / 100.0) // arrotonda a 2 decimale
+                        )
+                        .create();
     }
 
     // ----------------- PUBLIC METHODS -----------------
