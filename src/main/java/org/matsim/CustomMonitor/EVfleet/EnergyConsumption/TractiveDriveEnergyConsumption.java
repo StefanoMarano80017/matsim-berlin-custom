@@ -51,7 +51,7 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
     }
 
 
-    // --- Metodi di Stima (DA ADATTARE SE HAI DATI MIGLIORI) ---
+    // --- Metodi di Stima ---
     private double calculateMassEstimate(EvModel evData) {
         // Stima: Massa base (es. 1500 kg) + Peso batteria (es. 7 kg per kWh)
         final double BASE_MASS_KG = 1500.0;

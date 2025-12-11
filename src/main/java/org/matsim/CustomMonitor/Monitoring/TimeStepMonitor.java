@@ -1,4 +1,4 @@
-package org.matsim.CustomMonitor;
+package org.matsim.CustomMonitor.Monitoring;
 
 import java.util.List;
 import java.util.stream.Collectors;

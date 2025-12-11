@@ -1,11 +1,11 @@
 package org.matsim.CustomMonitor.ConfigRun;
 
-import org.matsim.CustomMonitor.TimeStepMonitor;
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
-import org.matsim.CustomMonitor.EVfleet.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
 import org.matsim.CustomMonitor.EVfleet.events.EvChargingEventHandler;
+import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
+import org.matsim.CustomMonitor.Monitoring.TimeStepMonitor;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;

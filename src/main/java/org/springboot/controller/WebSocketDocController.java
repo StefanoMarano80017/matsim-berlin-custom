@@ -1,6 +1,7 @@
 package org.springboot.controller;
 
 import org.springboot.DTO.payload.HubStatusPayload;
+import org.springboot.DTO.payload.TimeStepPayload;
 import org.springboot.DTO.payload.VehicleStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,5 +23,10 @@ public class WebSocketDocController {
         return null; // non viene usato realmente
     }
 
+    @Operation(summary = "Descrizione messaggio WebSocket status ad ogni timestep")
+    @GetMapping("vehicle-hub-doc")
+    public TimeStepPayload getStatusDoc() {
+        return null; // non viene usato realmente
+    }
 
 }

@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 /**
  * Classe base generica per tutti i messaggi di aggiornamento su WebSocket.
- * Implementata con Lombok per ridurre il boilerplate.
  *
  * @param <T> Il tipo di dato specifico contenuto nel payload.
  */
