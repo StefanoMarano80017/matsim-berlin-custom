@@ -11,11 +11,13 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
 import org.springboot.websocket.SimulationBridge;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
-@Slf4j(topic = "org.matsim")
 public class MatsimService {
+
+    private static final Logger log = LoggerFactory.getLogger(MatsimService.class);
 
     private final SimulationBridge simulationBridge;
     private final ApplicationContext applicationContext;

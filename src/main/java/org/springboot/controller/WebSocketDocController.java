@@ -12,19 +12,19 @@ import io.swagger.v3.oas.annotations.Operation;
 public class WebSocketDocController {
     
     @Operation(summary = "Descrizione messaggio WebSocket vehicle status")
-    @GetMapping("vehicle-status-doc")
+    @GetMapping("vehicle-doc")
     public VehicleStatus getVehicleStatusDoc() {
         return null; // non viene usato realmente
     }
 
     @Operation(summary = "Descrizione messaggio WebSocket hub status")
-    @GetMapping("vehicle-hub-doc")
+    @GetMapping("hub-doc")
     public HubStatusPayload gethubtatusDoc() {
         return null; // non viene usato realmente
     }
 
     @Operation(summary = "Descrizione messaggio WebSocket status ad ogni timestep")
-    @GetMapping("vehicle-hub-doc")
+    @GetMapping("status-doc")
     public TimeStepPayload getStatusDoc() {
         return null; // non viene usato realmente
     }
