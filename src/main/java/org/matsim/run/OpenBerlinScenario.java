@@ -49,8 +49,10 @@ public class OpenBerlinScenario extends MATSimApplication {
 
     private static ApplicationContext applicationContext; // Il contesto Spring
     private CustomModule customModule;
+
     private static Path csvPath_hub;
     private static Path csvPath_ev;
+    private static String config_path;
 
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
@@ -63,13 +65,13 @@ public class OpenBerlinScenario extends MATSimApplication {
     private String planSelector;
 
     public OpenBerlinScenario() {
-        super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        super(String.format("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
     }
 
     public void runScenario(Double sampleSize) {
         this.sampleSizeStatic = sampleSize;
         // --- 1. Carica Config dal file di default ---
-        Config config = ConfigUtils.loadConfig(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        Config config = ConfigUtils.loadConfig(String.format("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
         
         // --- 2. Applica tutte le personalizzazioni di prepareConfig ---
         config = prepareConfig(config);
@@ -211,12 +213,10 @@ public class OpenBerlinScenario extends MATSimApplication {
 
     @Override
     protected void prepareScenario(Scenario scenario) {
-        Path hubPath = Path.of("input/CustomInput/charging_hub.csv");
-        Path evDatasetPath = Path.of("input/CustomInput/ev-dataset.csv");
         this.customModule = new CustomModule(
             scenario, 
-            hubPath, 
-            evDatasetPath, 
+            csvPath_hub, 
+            csvPath_ev, 
             1, 0.6, 0.15, 
             true
         );
@@ -245,12 +245,11 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
     }
 
-
     public static void setEvCSV(Path csvPath){
         if (!Files.exists(csvPath)) {
             throw new RuntimeException("File EV non trovato: " + csvPath.toAbsolutePath());
         }
-        csvPath_hub = csvPath;
+        csvPath_ev = csvPath;
     }
 
     public static void setHubCSV(Path csvPath){
