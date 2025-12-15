@@ -25,7 +25,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Names;
 
-import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,16 +37,18 @@ public class CustomModule extends AbstractModule {
 
     private static final Logger log = LogManager.getLogger(EvFleetManager.class);
 
-    private final HubManager hubManager;
+    private final HubManager     hubManager;
     private final EvFleetManager evFleetManager;
     private final ChargingInfrastructureSpecification infraSpec;
 
     private final Resource  chargingHubPath;
     private final Resource  evDatasetPath;
-    private final int sampleSize;
-    private final double socMean;
-    private final double socStdDev;
+    private final int       sampleSize;
+    private final double    socMean;
+    private final double    socStdDev;
+    
     private final boolean debug;
+    private final Boolean publish_on_spring;
 
     public CustomModule(
         Scenario scenario, 
@@ -56,7 +57,8 @@ public class CustomModule extends AbstractModule {
         int      sampleSize, 
         double   socMean, 
         double   socStdDev, 
-        boolean  debug
+        boolean  debug, 
+        Boolean  publish_on_spring
     ) {
         this.chargingHubPath = chargingHubPath;
         this.evDatasetPath   = evDatasetPath;
@@ -67,6 +69,7 @@ public class CustomModule extends AbstractModule {
         this.hubManager      = new HubManager(scenario.getNetwork(), infraSpec);
         this.evFleetManager  = new EvFleetManager();
         this.debug           = debug;
+        this.publish_on_spring = publish_on_spring;
     }
 
 
@@ -155,6 +158,7 @@ public class CustomModule extends AbstractModule {
         
         bind(TimeStepMonitor.class).asEagerSingleton();
         bind(Double.class).annotatedWith(Names.named("timeStepMonitorStep")).toInstance(900.0);
+        bind(Boolean.class).annotatedWith(Names.named("serverEnabled")).toInstance(publish_on_spring);
         addMobsimListenerBinding().to(TimeStepMonitor.class);
 
         addEventHandlerBinding().toInstance(hubManager);

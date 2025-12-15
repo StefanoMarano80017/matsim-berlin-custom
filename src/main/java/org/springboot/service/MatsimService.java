@@ -4,32 +4,24 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
 import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springboot.websocket.SimulationBridge;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springboot.SimulationBridge.SimulationBridge;
 
 @Service
 public class MatsimService {
 
     private static final Logger log = LoggerFactory.getLogger(MatsimService.class);
-
-    private final SimulationBridge simulationBridge;
-    private final ApplicationContext applicationContext;
-    
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Future<?> currentFuture = null;
 
     @Autowired
-    public MatsimService(SimulationBridge simulationBridge, ApplicationContext applicationContext) {
-        this.simulationBridge = simulationBridge;
-        this.applicationContext = applicationContext;
-    }
+    private SimulationBridge simulationBridge;
 
     /**
      * Avvia il thread della simulazione.
@@ -49,7 +41,7 @@ public class MatsimService {
             }
         });
 
-        simulationBridge.publishSimpleText("Simulazione Avviata");
+        simulationBridge.publishWsSimpleText("Simulazione Avviata");
         return "Simulazione avviata.";
     }
 
@@ -72,15 +64,21 @@ public class MatsimService {
      */
     public void runScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
-        OpenBerlinScenario.setConfigPath("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml");
-        OpenBerlinScenario.setSpringContext(this.applicationContext);
-        OpenBerlinScenario.setHubCSV(new ClassPathResource("csv/charging_hub.csv"));
-        OpenBerlinScenario.setEvCSV(new ClassPathResource("csv/ev-dataset.csv"));
+
+        // Configurazione fluida tramite builder
+        ConfigRun configRun = ConfigRun.builder()
+                .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
+                .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
+                .configPath("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml")
+                .sampleSizeStatic(0.001)
+                .publishOnSpring(true)
+                .debug(false)
+                .build();
+
+        // Crea l'istanza di scenario con la configurazione
+        OpenBerlinScenario scenario = new OpenBerlinScenario().withConfigRun(configRun);
         log.info("Avvio simulazione MATSim...");
-        // MATSimApplication.run può lanciare una RuntimeException o una ExecutionException
-        // che verrà catturata nel blocco runThread.
-        OpenBerlinScenario scenario = new OpenBerlinScenario();
-        scenario.runScenario(0.001);
+        scenario.runScenario();
         log.info("Scenario MATSim completato!");
     }
 
