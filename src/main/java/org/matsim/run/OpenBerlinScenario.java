@@ -31,6 +31,7 @@ import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.Resource;
 
 import picocli.CommandLine;
 import playground.vsp.ev.UrbanEVConfigGroup;
@@ -47,15 +48,17 @@ import org.matsim.CustomMonitor.ConfigRun.SimulationWebSocketModule;
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
 
-    private static ApplicationContext applicationContext; // Il contesto Spring
-    private CustomModule customModule;
-
-    private static Path csvPath_hub;
-    private static Path csvPath_ev;
-    private static String config_path;
-
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
+
+    /*
+    *
+    */
+    private static ApplicationContext applicationContext; // Il contesto Spring
+    private CustomModule customModule;
+    private static Resource csvResourceHub;
+    private static Resource csvResourceEv;
+    private static String configPath;
 
     @CommandLine.Mixin
     private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
@@ -71,7 +74,7 @@ public class OpenBerlinScenario extends MATSimApplication {
     public void runScenario(Double sampleSize) {
         this.sampleSizeStatic = sampleSize;
         // --- 1. Carica Config dal file di default ---
-        Config config = ConfigUtils.loadConfig(String.format("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        Config config = OpenBerlinScenario.loadConfigFromPath();
         
         // --- 2. Applica tutte le personalizzazioni di prepareConfig ---
         config = prepareConfig(config);
@@ -213,10 +216,15 @@ public class OpenBerlinScenario extends MATSimApplication {
 
     @Override
     protected void prepareScenario(Scenario scenario) {
+
+        if (csvResourceHub == null || csvResourceEv == null) {
+            throw new RuntimeException("CSV Resources non inizializzate. Chiama setHubCSV() e setEvCSV() prima di prepareScenario.");
+        }
+
         this.customModule = new CustomModule(
             scenario, 
-            csvPath_hub, 
-            csvPath_ev, 
+            csvResourceHub, 
+            csvResourceEv, 
             1, 0.6, 0.15, 
             true
         );
@@ -243,20 +251,6 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new QsimTimingModule());
         controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
-    }
-
-    public static void setEvCSV(Path csvPath){
-        if (!Files.exists(csvPath)) {
-            throw new RuntimeException("File EV non trovato: " + csvPath.toAbsolutePath());
-        }
-        csvPath_ev = csvPath;
-    }
-
-    public static void setHubCSV(Path csvPath){
-        if (!Files.exists(csvPath)) {
-            throw new RuntimeException("File HUB non trovato: " + csvPath.toAbsolutePath());
-        }
-        csvPath_hub = csvPath;
     }
 
     /**
@@ -292,4 +286,37 @@ public class OpenBerlinScenario extends MATSimApplication {
             }
         }
     }
+
+
+    /*
+    *   Utility di config
+    */
+    public static void setEvCSV(Resource csvResource){
+        if (csvResource == null || !csvResource.exists()) {
+            throw new RuntimeException("Resource EV non trovata: " + csvResource);
+        }
+        csvResourceEv = csvResource;
+    }
+
+    public static void setHubCSV(Resource csvResource){
+        if (csvResource == null || !csvResource.exists()) {
+            throw new RuntimeException("Resource HUB non trovata: " + csvResource);
+        }
+        csvResourceHub = csvResource;
+    }
+
+    public static void setConfigPath(String path) {
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("Config path non valido");
+        }
+        configPath = String.format(path, VERSION, VERSION);
+    }
+
+    public static Config loadConfigFromPath() {
+        if (configPath == null) {
+            throw new IllegalStateException("Config path non impostato. Chiama prima setConfigPath()");
+        }
+        return ConfigUtils.loadConfig(configPath);
+    }
+
 }

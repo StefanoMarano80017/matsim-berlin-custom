@@ -19,6 +19,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
+import org.springframework.core.io.Resource;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -41,8 +42,8 @@ public class CustomModule extends AbstractModule {
     private final EvFleetManager evFleetManager;
     private final ChargingInfrastructureSpecification infraSpec;
 
-    private final Path chargingHubPath;
-    private final Path evDatasetPath;
+    private final Resource  chargingHubPath;
+    private final Resource  evDatasetPath;
     private final int sampleSize;
     private final double socMean;
     private final double socStdDev;
@@ -50,12 +51,12 @@ public class CustomModule extends AbstractModule {
 
     public CustomModule(
         Scenario scenario, 
-        Path chargingHubPath,
-        Path evDatasetPath,
-        int sampleSize, 
-        double socMean, 
-        double socStdDev, 
-        boolean debug
+        Resource chargingHubPath,
+        Resource evDatasetPath,
+        int      sampleSize, 
+        double   socMean, 
+        double   socStdDev, 
+        boolean  debug
     ) {
         this.chargingHubPath = chargingHubPath;
         this.evDatasetPath   = evDatasetPath;

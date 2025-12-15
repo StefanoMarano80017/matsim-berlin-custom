@@ -8,9 +8,9 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.contrib.ev.fleet.ElectricFleet;
 import org.matsim.vehicles.Vehicle;
+import org.springframework.core.io.Resource;
 
 import javax.inject.Inject;
-import java.nio.file.Path;
 import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
@@ -50,7 +50,7 @@ public class EvFleetManager{
     // PUBLIC API
     // ----------------------------------------------------
     public void generateFleetFromCsv(
-        Path csv, 
+        Resource csv, 
         Scenario scenario, 
         int count, 
         double socMean, 

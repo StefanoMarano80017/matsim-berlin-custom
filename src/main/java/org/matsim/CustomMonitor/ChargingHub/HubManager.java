@@ -5,13 +5,13 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.Charger;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
+import org.springframework.core.io.Resource;
 import org.matsim.contrib.ev.charging.ChargingStartEvent;
 import org.matsim.contrib.ev.charging.ChargingEndEvent;
 import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
 import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.*;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,8 +27,8 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
     // Mappa hub e charger
     private final Map<Id<Charger>, String> charger2hub = new HashMap<>();
     private final Map<Id<Charger>, Double> chargerEnergy = new HashMap<>();
-    private final Map<String, Double> hubEnergy = new HashMap<>();
-    private final Map<String, Integer> hubOccupancy = new HashMap<>();
+    private final Map<String, Double>      hubEnergy = new HashMap<>();
+    private final Map<String, Integer>     hubOccupancy = new HashMap<>();
     private final Map<Double, Map<String, Integer>> timeline = new HashMap<>();
 
     public HubManager(Network network, ChargingInfrastructureSpecification infraSpec) {
@@ -39,9 +39,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
     // ------------------------
     // Creazione hub tramite generator
     // ------------------------
-    public void createHub(
-        Path csvFile
-    ) {
+    public void createHub(Resource csvFile) {
         try {
             generator.generateHubsFromCSV(csvFile);
             log.debug("[HubManager] Hub e colonnine generate con successo.");

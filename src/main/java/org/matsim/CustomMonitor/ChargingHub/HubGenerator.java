@@ -7,11 +7,11 @@ import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.*;
 import org.matsim.utils.objectattributes.attributable.Attributes;
 import org.matsim.utils.objectattributes.attributable.AttributesImpl;
+import org.springframework.core.io.Resource;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStreamReader;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -31,8 +31,9 @@ public class HubGenerator {
     /**
      * CSV: hubId,linkId,nColonnine,type,power
      */
-    public void generateHubsFromCSV(Path csvFile) throws IOException {
-        try (BufferedReader reader = Files.newBufferedReader(csvFile)) {
+    public void generateHubsFromCSV(Resource csvResource) throws IOException {
+        try (BufferedReader reader =  
+                new BufferedReader(new InputStreamReader(csvResource.getInputStream()))){
 
             String header = reader.readLine(); // skip header
             if (header == null)

@@ -1,6 +1,5 @@
 package org.springboot.service;
 
-import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -8,8 +7,7 @@ import java.util.concurrent.Future;
 import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springboot.websocket.SimulationBridge;
 
@@ -74,15 +72,15 @@ public class MatsimService {
      */
     public void runScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
+        OpenBerlinScenario.setConfigPath("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml");
         OpenBerlinScenario.setSpringContext(this.applicationContext);
-        OpenBerlinScenario.setEvCSV(Path.of("matsim-berlin-custom/input/CustomInput/ev-dataset.csv"));
-        OpenBerlinScenario.setHubCSV(Path.of("matsim-berlin-custom/input/CustomInput/charging_hub.csv"));
+        OpenBerlinScenario.setHubCSV(new ClassPathResource("csv/charging_hub.csv"));
+        OpenBerlinScenario.setEvCSV(new ClassPathResource("csv/ev-dataset.csv"));
         log.info("Avvio simulazione MATSim...");
         // MATSimApplication.run può lanciare una RuntimeException o una ExecutionException
         // che verrà catturata nel blocco runThread.
         OpenBerlinScenario scenario = new OpenBerlinScenario();
         scenario.runScenario(0.001);
-        //MATSimApplication.run(OpenBerlinScenario.class, args);
         log.info("Scenario MATSim completato!");
     }
 
