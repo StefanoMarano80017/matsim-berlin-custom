@@ -69,7 +69,7 @@ public class MatsimService {
         ConfigRun configRun = ConfigRun.builder()
                 .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
                 .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
-                .configPath("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml")
+                .configPath("input/v%s/berlin-v%s.config.xml")
                 .sampleSizeStatic(0.001)
                 .publishOnSpring(true)
                 .debug(true)

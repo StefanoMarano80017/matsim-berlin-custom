@@ -59,7 +59,7 @@ public class OpenBerlinScenario extends MATSimApplication {
     private String planSelector;
 
     public OpenBerlinScenario() {
-        super(String.format("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
+        super(String.format("input/v%s/berlin-v%s.config.xml", VERSION, VERSION));
         this.sampleSizeStatic = null;
     }
 
@@ -113,7 +113,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
         evConfig.chargersFile = "matsim-berlin-custom/input/CustomInput/fake_chargers.xml"; // Placeholder
         UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
-        urbanEVConfig.setCriticalSOC(0.6);
+        urbanEVConfig.setCriticalSOC(0.4);
         config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
 
         // Register EV charging activities
@@ -124,7 +124,10 @@ public class OpenBerlinScenario extends MATSimApplication {
             new ActivityParams(TransportMode.car + UrbanEVModule.PLUGIN_INTERACTION).setScoringThisActivityAtAll(false)
         );
         config.scoring().addActivityParams(
-            new ActivityParams("charging").setScoringThisActivityAtAll(true).setTypicalDuration(3600 * 2).setMinimalDuration(300)
+            new ActivityParams("charging")
+                    .setScoringThisActivityAtAll(true)
+                    .setTypicalDuration(3600 * 2)
+                    .setMinimalDuration(300)
         );
 
         SimWrapperConfigGroup sw = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
@@ -133,10 +136,10 @@ public class OpenBerlinScenario extends MATSimApplication {
         config.qsim().setStorageCapFactor(sampleSize);
         config.counts().setCountsScaleFactor(sampleSize);
         sw.sampleSize = sampleSize;
-
         config.controller().setRunId(sample.adjustName(config.controller().getRunId()));
         config.controller().setOutputDirectory(sample.adjustName(config.controller().getOutputDirectory()));
         config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
+
         config.qsim().setUsingTravelTimeCheckInTeleportation(true);
         RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
 
@@ -145,10 +148,16 @@ public class OpenBerlinScenario extends MATSimApplication {
         // Strategia di replanning
         for (String subpopulation : List.of("person", "freight", "goodsTraffic", "commercialPersonTraffic", "commercialPersonTraffic_service")) {
             config.replanning().addStrategySettings(
-                    new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta).setWeight(1.0).setSubpopulation(subpopulation)
+                    new StrategySettings()
+                            .setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
+                            .setWeight(1.0)
+                            .setSubpopulation(subpopulation)
             );
             config.replanning().addStrategySettings(
-                    new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute).setWeight(0.15).setSubpopulation(subpopulation)
+                    new StrategySettings()
+                            .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute)
+                            .setWeight(0.15)
+                            .setSubpopulation(subpopulation)
             );
         }
 

@@ -39,13 +39,13 @@ public class StaticPlanGenerator implements PlanGenerationStrategy {
         plan.addLeg(factory.createLeg("car"));
 
         Activity work = factory.createActivityFromLinkId("work", workLink.getId());
-        work.setEndTime(10 * 3600);
+        work.setEndTime(8 * 3600);
         plan.addActivity(work);
 
         plan.addLeg(factory.createLeg("car"));
 
         Activity charge = factory.createActivityFromLinkId("charging", chargingLink);
-        charge.setEndTime(13 * 3600);
+        charge.setEndTime(13d * 3600);
         plan.addActivity(charge);
 
         plan.addLeg(factory.createLeg("car"));
