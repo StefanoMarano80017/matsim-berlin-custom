@@ -47,8 +47,9 @@ public class OpenBerlinScenario extends MATSimApplication {
     */
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
-
-    private ConfigRun configRun; // Tutti i parametri della run
+    
+    // Tutti i parametri della run
+    private ConfigRun configRun; 
 
     @CommandLine.Mixin
     private final SampleOptions sample = new SampleOptions(10, 25, 3, 1);
@@ -69,6 +70,10 @@ public class OpenBerlinScenario extends MATSimApplication {
         return this;
     }
 
+    public static void main(String[] args) {
+		MATSimApplication.run(OpenBerlinScenario.class, args);
+	}
+
     public void runScenario() {
         if (configRun == null) {
             throw new IllegalStateException("ConfigRun non inizializzato. Usa il builder ConfigRun prima di runScenario.");
@@ -88,7 +93,7 @@ public class OpenBerlinScenario extends MATSimApplication {
                 scenario,
                 configRun.getCsvResourceHub(),
                 configRun.getCsvResourceEv(),
-                1, 0.6, 0.15,
+                1, 0.90, 0.15,
                 configRun.isDebug(),
                 configRun.isPublishOnSpring()
         );
@@ -97,22 +102,30 @@ public class OpenBerlinScenario extends MATSimApplication {
         // --- 5. Prepara il Controler e avvia ---
         Controler controler = new Controler(scenario);
         prepareControler(controler, customModule);
+
         controler.run();
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Config prepareConfig(Config config) {
         // --- Creazione EV config---
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
-        evConfig.chargersFile = "fake_chargers.xml"; // Placeholder
+        evConfig.chargersFile = "matsim-berlin-custom/input/CustomInput/fake_chargers.xml"; // Placeholder
         UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
-        urbanEVConfig.setCriticalSOC(0.2);
+        urbanEVConfig.setCriticalSOC(0.6);
         config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
 
         // Register EV charging activities
-        config.scoring().addActivityParams(new ActivityParams(TransportMode.car + UrbanEVModule.PLUGOUT_INTERACTION).setScoringThisActivityAtAll(false));
-        config.scoring().addActivityParams(new ActivityParams(TransportMode.car + UrbanEVModule.PLUGIN_INTERACTION).setScoringThisActivityAtAll(false));
-        config.scoring().addActivityParams(new ActivityParams("charging").setScoringThisActivityAtAll(true).setTypicalDuration(3600 * 2).setMinimalDuration(300));
+        config.scoring().addActivityParams(
+            new ActivityParams(TransportMode.car + UrbanEVModule.PLUGOUT_INTERACTION).setScoringThisActivityAtAll(false)
+        );
+        config.scoring().addActivityParams(
+            new ActivityParams(TransportMode.car + UrbanEVModule.PLUGIN_INTERACTION).setScoringThisActivityAtAll(false)
+        );
+        config.scoring().addActivityParams(
+            new ActivityParams("charging").setScoringThisActivityAtAll(true).setTypicalDuration(3600 * 2).setMinimalDuration(300)
+        );
 
         SimWrapperConfigGroup sw = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
         double sampleSize = (this.sampleSizeStatic != null) ? this.sampleSizeStatic : sample.getSample();
@@ -142,6 +155,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         config.replanning().addStrategySettings(
                 new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.TimeAllocationMutator).setWeight(0.15).setSubpopulation("person")
         );
+        
         config.replanning().addStrategySettings(
                 new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice).setWeight(0.15).setSubpopulation("person")
         );

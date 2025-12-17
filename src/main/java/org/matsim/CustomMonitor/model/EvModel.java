@@ -30,12 +30,23 @@ public class EvModel {
     private final int    widthMm;
     private final int    heightMm;
     private final String carBodyType;
-    // --- Dati dinamici (stato di simulazione) ---
-    private double  currentSoc;           // 0.0-1.0
-    private double  currentEnergyJoules;  // Livello corrente in Joule
-    private double  distanceTraveledKm;   // Distanza percorsa
-    private boolean isCharging;           // True se in ricarica
 
+    // --- Dati dinamici (stato di simulazione) ---
+    private double currentSoc;           // 0.0-1.0
+    private double currentEnergyJoules;  // Livello corrente in Joule
+    private double distanceTraveledKm;   // Distanza percorsa
+    private State state;                 // Stato del veicolo (enum)
+    private String linkId;               // opzionale: link corrente, valido se MOVING o CHARGING
+
+    // Enum interno per lo stato del veicolo
+    public enum State {
+        MOVING,
+        STOPPED,
+        CHARGING,
+        PARKED
+    }
+
+    // --- Costruttore ---
     public EvModel(
             Id<Vehicle> vehicleId,
             String manufacturer,
@@ -87,7 +98,7 @@ public class EvModel {
         this.currentSoc = 1.0;
         this.currentEnergyJoules = nominalCapacityKwh * 3.6e6;
         this.distanceTraveledKm = 0.0;
-        this.isCharging = false;
+        this.state = State.STOPPED; // default
     }
 
     // --- Aggiornamento dinamico ---
@@ -101,44 +112,57 @@ public class EvModel {
     }
 
     // --- Getter ---
-    public Id<Vehicle>  getVehicleId() { return vehicleId; }
-    public String       getManufacturer() { return manufacturer; }
-    public String       getModel() { return model; }
-    public double       getNominalCapacityKwh() { return nominalCapacityKwh; }
-    public double       getConsumptionKwhPerKm() { return consumptionKwhPerKm; }
-    public String       getBatteryType() { return batteryType; }
-    public int          getNumberOfCells() { return numberOfCells; }
-    public double       getTorqueNm() { return torqueNm; }
-    public double       getTopSpeedKmh() { return topSpeedKmh; }
-    public double       getRangeKm() { return rangeKm; }
-    public double       getAcceleration0To100() { return acceleration0To100; }
-    public double       getFastChargingPowerKwDc() { return fastChargingPowerKwDc; }
-    public String       getFastChargePort() { return fastChargePort; }
-    public double       getTowingCapacityKg() { return towingCapacityKg; }
-    public double       getCargoVolumeL() { return cargoVolumeL; }
-    public int          getSeats() { return seats; }
-    public String       getDrivetrain() { return drivetrain; }
-    public String       getSegment() { return segment; }
-    public int          getLengthMm() { return lengthMm; }
-    public int          getWidthMm() { return widthMm; }
-    public int          getHeightMm() { return heightMm; }
-    public String       getCarBodyType() { return carBodyType; }
-    public double       getCurrentSoc() { return currentSoc; }
-    public double       getCurrentEnergyJoules() { return currentEnergyJoules; }
-    public double       getDistanceTraveledKm() { return distanceTraveledKm; }
-    public boolean      isCharging() { return isCharging; }
+    public Id<Vehicle> getVehicleId()           { return vehicleId; }
+    public String getManufacturer()             { return manufacturer; }
+    public String getModel()                    { return model; }
+    public double getNominalCapacityKwh()       { return nominalCapacityKwh; }
+    public double getConsumptionKwhPerKm()      { return consumptionKwhPerKm; }
+    public String getBatteryType()              { return batteryType; }
+    public int getNumberOfCells()               { return numberOfCells; }
+    public double getTorqueNm()                 { return torqueNm; }
+    public double getTopSpeedKmh()              { return topSpeedKmh; }
+    public double getRangeKm()                  { return rangeKm; }
+    public double getAcceleration0To100()       { return acceleration0To100; }
+    public double getFastChargingPowerKwDc()    { return fastChargingPowerKwDc; }
+    public String getFastChargePort()           { return fastChargePort; }
+    public double getTowingCapacityKg()         { return towingCapacityKg; }
+    public double getCargoVolumeL()             { return cargoVolumeL; }
+    public int getSeats()                       { return seats; }
+    public String getDrivetrain()               { return drivetrain; }
+    public String getSegment()                  { return segment; }
+    public int getLengthMm()                    { return lengthMm; }
+    public int getWidthMm()                     { return widthMm; }
+    public int getHeightMm()                    { return heightMm; }
+    public String getCarBodyType()              { return carBodyType; }
+    public double getCurrentSoc()               { return currentSoc; }
+    public double getCurrentEnergyJoules()      { return currentEnergyJoules; }
+    public double getDistanceTraveledKm()       { return distanceTraveledKm; }
+    public State getState()                     { return state; }
+    public String getLinkId()                   { return linkId;}
 
+    // --- Backward compatibility ---
+    public boolean isCharging() {
+        return this.state == State.CHARGING;
+    }
 
-    // ---- Setter ---
-    public void setCharging(boolean charging) { this.isCharging = charging; }
+    @Deprecated
+    public void setCharging() {
+        this.state = State.CHARGING;
+    }
 
+    public void setLinkId(String linkId){
+        this.linkId = linkId;
+    }
 
-    /**
-     * Autonomia stimata residua (km) basata su SOC attuale
-     */
+    // --- Autonomia stimata ---
     public double getEstimatedRemainingRangeKm() {
         if (consumptionKwhPerKm <= 0) return 0.0;
         double currentEnergyKwh = currentEnergyJoules / 3.6e6;
         return currentEnergyKwh / consumptionKwhPerKm;
+    }
+
+    // Setter per lo stato
+    public void setState(State state) {
+        this.state = state;
     }
 }

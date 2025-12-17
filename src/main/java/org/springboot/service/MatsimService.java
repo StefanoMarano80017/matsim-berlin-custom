@@ -72,7 +72,7 @@ public class MatsimService {
                 .configPath("matsim-berlin-custom/input/v%s/berlin-v%s.config.xml")
                 .sampleSizeStatic(0.001)
                 .publishOnSpring(true)
-                .debug(false)
+                .debug(true)
                 .build();
 
         // Crea l'istanza di scenario con la configurazione

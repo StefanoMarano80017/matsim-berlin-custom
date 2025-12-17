@@ -95,7 +95,6 @@ public class CsvFleetGenerationStrategy implements EvFleetStrategy {
                     evModel.getNominalCapacityKwh() * 3.6e6 * soc
             );
 
-            evModel.setCharging(false);
             evModels.add(evModel);
         }
 

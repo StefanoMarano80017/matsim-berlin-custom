@@ -21,24 +21,23 @@ public class QuickLinkDebugHandler implements LinkEnterEventHandler, VehicleEnte
         this.electricVehicleIds = electricVehicleIds;
     }
 
-
     @Override
     public void handleEvent(LinkEnterEvent event) {
         if (electricVehicleIds.contains(event.getVehicleId())) {
-            log.info("Veicolo %s entra link %s al tempo %.0f%n",
-                    event.getVehicleId(),
-                    event.getLinkId(),
-                    event.getTime());
+            log.info("Veicolo {} entra link {} al tempo {}", 
+                event.getVehicleId(), 
+                event.getLinkId(), 
+                event.getTime());
         }
     }
 
     @Override
     public void handleEvent(VehicleEntersTrafficEvent event) {
         if (event.getVehicleId().toString().startsWith("EV_")) {
-           log.info("Veicolo %s ha iniziato il viaggio sul link %s al tempo %.0f%n", 
-                    event.getVehicleId(), 
-                    event.getLinkId(),
-                    event.getTime());
+            log.info("Veicolo {} ha iniziato il viaggio sul link {} al tempo {}", 
+                event.getVehicleId(), 
+                event.getLinkId(), 
+                event.getTime());
         }
     }
 }

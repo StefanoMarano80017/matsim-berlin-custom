@@ -3,14 +3,17 @@ package org.matsim.CustomMonitor.ConfigRun;
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
-import org.matsim.CustomMonitor.EVfleet.events.EvChargingEventHandler;
+import org.matsim.CustomMonitor.Monitoring.HubChargingMonitor;
+import org.matsim.CustomMonitor.Monitoring.LinkMonitor;
 import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
-import org.matsim.CustomMonitor.Monitoring.TimeStepMonitor;
+import org.matsim.CustomMonitor.Monitoring.TimeStepSocMonitor;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
 import org.matsim.api.core.v01.population.Person;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
+import org.matsim.contrib.ev.infrastructure.Charger;
+import org.matsim.contrib.ev.infrastructure.ChargerSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationDefaultImpl;
 import org.matsim.core.controler.AbstractModule;
@@ -23,7 +26,6 @@ import org.springframework.core.io.Resource;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.google.inject.name.Names;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,15 +62,15 @@ public class CustomModule extends AbstractModule {
         boolean  debug, 
         Boolean  publish_on_spring
     ) {
-        this.chargingHubPath = chargingHubPath;
-        this.evDatasetPath   = evDatasetPath;
-        this.sampleSize      = sampleSize;
-        this.socMean         = socMean;
-        this.socStdDev       = socStdDev;
-        this.infraSpec       = new ChargingInfrastructureSpecificationDefaultImpl();
-        this.hubManager      = new HubManager(scenario.getNetwork(), infraSpec);
-        this.evFleetManager  = new EvFleetManager();
-        this.debug           = debug;
+        this.chargingHubPath   = chargingHubPath;
+        this.evDatasetPath     = evDatasetPath;
+        this.sampleSize        = sampleSize;
+        this.socMean           = socMean;
+        this.socStdDev         = socStdDev;
+        this.infraSpec         = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.hubManager        = new HubManager(scenario.getNetwork(), infraSpec);
+        this.evFleetManager    = new EvFleetManager();
+        this.debug             = debug;
         this.publish_on_spring = publish_on_spring;
     }
 
@@ -82,9 +84,9 @@ public class CustomModule extends AbstractModule {
             scenario.getVehicles(),
             scenario.getPopulation().getPersons()
         );
+
         log.info("Modulo Custom: Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
     }
-
 
     private void loadChargingHubs() {
         this.hubManager.createHub(chargingHubPath);
@@ -153,17 +155,29 @@ public class CustomModule extends AbstractModule {
     @Override
     public void install() {
         bind(ChargingInfrastructureSpecification.class).toInstance(infraSpec);
+        /*
+        *  Binding dei miei manager per gli altri moduli
+        */
         bind(EvFleetManager.class).toInstance(evFleetManager);
         bind(HubManager.class).toInstance(hubManager);
-        
-        bind(TimeStepMonitor.class).asEagerSingleton();
-        bind(Double.class).annotatedWith(Names.named("timeStepMonitorStep")).toInstance(900.0);
-        bind(Boolean.class).annotatedWith(Names.named("serverEnabled")).toInstance(publish_on_spring);
-        addMobsimListenerBinding().to(TimeStepMonitor.class);
-
-        addEventHandlerBinding().toInstance(hubManager);
-        addEventHandlerBinding().toInstance(new EvChargingEventHandler(evFleetManager.getFleet()));
-
+        /*
+        *   monitor percorsi veicoli 
+        */
+        LinkMonitor linkMonitor = new LinkMonitor(evFleetManager, this.publish_on_spring);
+        addEventHandlerBinding().toInstance(linkMonitor);
+        /*
+        *   monitor inizio e fine ricarica a un hub
+        */
+        HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(hubManager, evFleetManager, this.publish_on_spring);
+        addEventHandlerBinding().toInstance(hubChargingMonitor);
+        /*
+        *   Andamento Soc nel tempo, settare il timestep per aggiornamento in discreto 
+        */
+        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, hubManager, 900.0, this.publish_on_spring);        
+        addMobsimListenerBinding().toInstance(timeStepSocMonitor);
+        /*
+        *  Modello di consumo del SoC
+        */
         bind(DriveEnergyConsumption.Factory.class).toProvider(new Provider<>() {
             @Inject private EvFleetManager providerEvFleetManager;
             @Override

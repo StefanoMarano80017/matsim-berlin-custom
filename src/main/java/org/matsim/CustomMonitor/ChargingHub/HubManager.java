@@ -1,15 +1,10 @@
 package org.matsim.CustomMonitor.ChargingHub;
 
-import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.Charger;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.springframework.core.io.Resource;
-import org.matsim.contrib.ev.charging.ChargingStartEvent;
-import org.matsim.contrib.ev.charging.ChargingEndEvent;
-import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
-import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 
 import java.io.IOException;
 import java.util.*;
@@ -17,18 +12,17 @@ import java.util.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class HubManager implements ChargingStartEventHandler, ChargingEndEventHandler {
+public class HubManager {
 
-    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
+    private static final Logger log = LogManager.getLogger(HubManager.class);
 
     private final HubGenerator generator;
     private final ChargingInfrastructureSpecification infraSpec;
 
-    // Mappa hub e charger
-    private final Map<Id<Charger>, String> charger2hub = new HashMap<>();
-    private final Map<Id<Charger>, Double> chargerEnergy = new HashMap<>();
-    private final Map<String, Double>      hubEnergy = new HashMap<>();
-    private final Map<String, Integer>     hubOccupancy = new HashMap<>();
+    private final Map<Id<Charger>, String> charger2hub       = new HashMap<>();
+    private final Map<Id<Charger>, Double> chargerEnergy     = new HashMap<>();
+    private final Map<String, Double> hubEnergy              = new HashMap<>();
+    private final Map<String, Integer> hubOccupancy          = new HashMap<>();
     private final Map<Double, Map<String, Integer>> timeline = new HashMap<>();
 
     public HubManager(Network network, ChargingInfrastructureSpecification infraSpec) {
@@ -36,9 +30,6 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
         this.generator = new HubGenerator(network, infraSpec);
     }
 
-    // ------------------------
-    // Creazione hub tramite generator
-    // ------------------------
     public void createHub(Resource csvFile) {
         try {
             generator.generateHubsFromCSV(csvFile);
@@ -46,7 +37,7 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
         } catch (IOException e) {
             e.printStackTrace();
         }
-        // registra tutti i charger già presenti nella infrastruttura
+
         this.infraSpec.getChargerSpecifications().values().forEach(chSpec -> {
             Id<Charger> chId = chSpec.getId();
             String hubId = (String) chSpec.getAttributes().getAttribute("hubId");
@@ -72,63 +63,47 @@ public class HubManager implements ChargingStartEventHandler, ChargingEndEventHa
     }
 
     // ------------------------
-    // Event handler
+    // Metodi di aggiornamento
     // ------------------------
-    @Override
-    public void handleEvent(ChargingStartEvent event) {
-        String hubId = charger2hub.get(event.getChargerId());
+    public void incrementOccupancy(String hubId) {
         hubOccupancy.put(hubId, hubOccupancy.get(hubId) + 1);
-        recordTimeline(event.getTime());
-
-        // --- Logging ---
-        log.debug("[HubManager] [%.0f] START charging: charger=%s, hub=%s, occupancy=%d%n",
-            event.getTime(),
-            event.getChargerId(),
-            hubId,
-            hubOccupancy.get(hubId));
     }
 
-    @Override
-    public void handleEvent(ChargingEndEvent event) {
-        String hubId = charger2hub.get(event.getChargerId());
+    public void decrementOccupancy(String hubId) {
         hubOccupancy.put(hubId, hubOccupancy.get(hubId) - 1);
-
-        double energy = event.getCharge();
-        chargerEnergy.put(event.getChargerId(), chargerEnergy.get(event.getChargerId()) + energy);
-        hubEnergy.put(hubId, hubEnergy.get(hubId) + energy);
-
-        recordTimeline(event.getTime());
-
-        // --- Logging ---
-        log.debug("[HubManager] [%.0f] END charging: charger=%s, hub=%s, charge=%.2fJ, occupancy=%d, totalHubEnergy=%.2fJ%n",
-            event.getTime(),
-            event.getChargerId(),
-            hubId,
-            energy,
-            hubOccupancy.get(hubId),
-            hubEnergy.get(hubId));
     }
 
-    private void recordTimeline(double time) {
-        Map<String, Integer> snapshot = new HashMap<>();
-        hubOccupancy.forEach(snapshot::put);
+    public void addChargerEnergy(Id<Charger> chargerId, double energy) {
+        chargerEnergy.put(chargerId, chargerEnergy.get(chargerId) + energy);
+    }
+
+    public void addHubEnergy(String hubId, double energy) {
+        hubEnergy.put(hubId, hubEnergy.get(hubId) + energy);
+    }
+
+    public void recordTimeline(double time) {
+        Map<String, Integer> snapshot = new HashMap<>(hubOccupancy);
         timeline.put(time, snapshot);
     }
 
     // ------------------------
-    // Accessor e CSV (uguale a prima)
+    // Accessor
     // ------------------------
-    public double getChargerEnergy(Id<Charger> chargerId) { return chargerEnergy.get(chargerId); }
-    public double getHubEnergy(String hubId) { return hubEnergy.get(hubId); }
-    public int getHubOccupancy(String hubId) { return hubOccupancy.get(hubId); }
-    public Map<String, Double> getHubEnergyMap() { return hubEnergy; }
-    public Map<String, Integer> getHubOccupancyMap() { return hubOccupancy; }
-    public Map<Double, Map<String, Integer>> getTimeline() { return timeline; }
+    public double getChargerEnergy(Id<Charger> chargerId)   { return chargerEnergy.get(chargerId); }
+    public double getHubEnergy(String hubId)                { return hubEnergy.get(hubId); }
+    public int getHubOccupancy(String hubId)                { return hubOccupancy.get(hubId); }
+    public Map<String, Double> getHubEnergyMap()            { return hubEnergy; }
+    public Map<String, Integer> getHubOccupancyMap()        { return hubOccupancy; }
+    public Map<Double, Map<String, Integer>> getTimeline()  { return timeline; }
 
     public void resetAll() {
         chargerEnergy.replaceAll((k,v) -> 0.0);
         hubEnergy.replaceAll((k,v) -> 0.0);
         hubOccupancy.replaceAll((k,v) -> 0);
         timeline.clear();
+    }
+
+    public String getHubIdForCharger(Id<Charger> chargerId) {
+        return charger2hub.get(chargerId);
     }
 }
