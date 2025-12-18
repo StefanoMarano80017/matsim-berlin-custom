@@ -37,6 +37,7 @@ public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory
             log.error("Veicolo non trovato in EvFleetManager");
         }
         // Restituisce l'istanza del tuo modello di consumo personalizzato.
-        return new DatasetBasedDriveEnergyConsumption(electricVehicle, this.evFleetManager);
+        //return new DatasetBasedDriveEnergyConsumption(electricVehicle, this.evFleetManager);
+        return new TractiveDriveEnergyConsumption(electricVehicle, this.evFleetManager);
     }
 }
