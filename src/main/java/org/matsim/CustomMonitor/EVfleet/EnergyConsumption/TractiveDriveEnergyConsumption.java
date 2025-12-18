@@ -9,27 +9,29 @@ import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.fleet.ElectricVehicle;
 
 /**
- * Modello di consumo basato sulle forze di trazione (rolling, aerodinamica, pendenza),
- * calibrato per simulazioni MATSim (stop&go implicito, velocità medie, rigenerazione).
+ * Modello di consumo EV basato sulle forze di trazione,
+ * calibrato per simulazioni MATSim.
  *
- * Obiettivo:
- * - evitare sovrastima del consumo
- * - mantenere coerenza fisica
- * - produrre valori realistici (kWh/100km)
+ * Include:
+ * - efficienza dipendente dalla velocità
+ * - stop&go esplicito (congestione)
+ * - limite di rigenerazione
+ * - aerodinamica ridotta a basse velocità
  */
 public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
 
     private static final Logger log = LogManager.getLogger(TractiveDriveEnergyConsumption.class);
 
     // Costanti fisiche
-    private static final double GRAVITY = 9.81;        // m/s^2
-    private static final double AIR_DENSITY = 1.225;  // kg/m^3
+    private static final double GRAVITY = 9.81;
+    private static final double AIR_DENSITY = 1.225;
+
+    // Rigenerazione realistica
+    private static final double REGEN_EFFICIENCY = 0.55;
+    private static final double MAX_REGEN_POWER_W = 50_000; // 50 kW
 
     private final ElectricVehicle electricVehicle;
     private final EvFleetManager fleetManager;
-
-    // Efficienza massima di rigenerazione (realistica per EV)
-    private static final double REGEN_EFFICIENCY = 0.55;
 
     public TractiveDriveEnergyConsumption(ElectricVehicle electricVehicle, EvFleetManager fleetManager) {
         this.electricVehicle = electricVehicle;
@@ -37,43 +39,33 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
     }
 
     /**
-     * Recupera la pendenza del link.
-     * Supporta:
-     * - percentuale (es. 5 = 5%)
-     * - gradi
-     *
-     * Usa atan() per evitare errori grossolani sulla forza di gravità.
+     * Pendenza del link:
+     * supporta percentuale o angolo.
      */
     private double getSlopeAngleRadians(Link link) {
         try {
             Double slope = (Double) link.getAttributes().getAttribute("slope");
             if (slope != null) {
-                // Se è troppo grande per essere un angolo in radianti,
-                // assumiamo che sia percentuale
                 if (Math.abs(slope) > 0.3) {
-                    slope = slope / 100.0;
+                    slope = slope / 100.0; // percentuale
                 }
                 return Math.atan(slope);
             }
         } catch (Exception e) {
-            // fallback a pendenza zero
+            // fallback
         }
         return 0.0;
     }
 
     /**
-     * Stima della massa del veicolo.
-     *
-     * Scelte:
-     * - peso batteria 5 kg/kWh (valore realistico EV moderni)
-     * - correzione moderata per segmento
+     * Massa stimata del veicolo.
      */
     private double calculateMassEstimate(EvModel evData) {
         final double BASE_MASS_KG = 1450.0;
         final double BATTERY_KG_PER_KWH = 5.0;
 
-        double mass = BASE_MASS_KG
-                + evData.getNominalCapacityKwh() * BATTERY_KG_PER_KWH;
+        double mass = BASE_MASS_KG +
+                evData.getNominalCapacityKwh() * BATTERY_KG_PER_KWH;
 
         if (evData.getSegment().equalsIgnoreCase("SUV")) {
             mass += 200.0;
@@ -83,18 +75,10 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
         return mass;
     }
 
-    /**
-     * Coefficiente di resistenza al rotolamento.
-     * Valore medio realistico per pneumatici stradali EV.
-     */
     private double calculateCrEstimate() {
         return 0.010;
     }
 
-    /**
-     * Stima CdA (coefficiente aerodinamico * area frontale).
-     * Approccio volutamente semplice ma stabile.
-     */
     private double calculateCdaEstimate(EvModel evData) {
         double cd;
         String type = evData.getCarBodyType().toLowerCase();
@@ -110,10 +94,7 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
         double widthM = evData.getWidthMm() / 1000.0;
         double heightM = evData.getHeightMm() / 1000.0;
 
-        // 80% del rettangolo → area frontale
-        double area = 0.8 * widthM * heightM;
-
-        return cd * area;
+        return cd * (0.8 * widthM * heightM);
     }
 
     @Override
@@ -121,8 +102,6 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
 
         EvModel evData = fleetManager.getVehicle(electricVehicle.getId());
         if (evData == null) {
-            log.warn("Veicolo {} non trovato, consumo impostato a 0",
-                    electricVehicle.getId());
             return 0.0;
         }
 
@@ -139,7 +118,7 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
         double length = link.getLength();
         double avgSpeed = length / travelTime;
 
-        // Evita che velocità medie basse annullino l’aerodinamica
+        // Velocità effettiva per l’aerodinamica
         double effectiveSpeed = Math.max(avgSpeed, 8.0); // ~30 km/h
 
         double slopeRad = getSlopeAngleRadians(link);
@@ -150,45 +129,60 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
         // FORZE
         // ----------------------------
         double fRolling = massKg * GRAVITY * cr * cosA;
-        double fAero = 0.5 * AIR_DENSITY * cda * effectiveSpeed * effectiveSpeed;
-        double fSlope = massKg * GRAVITY * sinA;
 
+        double fAero = 0.5 * AIR_DENSITY * cda * effectiveSpeed * effectiveSpeed;
+
+        // Aerodinamica fortemente ridotta in urbano
+        if (avgSpeed < 8.3) { // < 30 km/h
+            fAero *= 0.3;
+        }
+
+        double fSlope = massKg * GRAVITY * sinA;
         double fTractive = fRolling + fAero + fSlope;
 
-        // Efficienza powertrain:
-        // - più bassa in trazione (carichi elevati)
-        // - più alta in rilascio
-        double tractionEfficiency = fTractive > 0 ? 0.85 : 0.90;
+        // ----------------------------
+        // EFFICIENZA DIPENDENTE DALLA VELOCITÀ
+        // ----------------------------
+        double efficiency;
+        if (avgSpeed < 8.0) {            // traffico urbano denso
+            efficiency = 0.75;
+        } else if (avgSpeed < 20.0) {    // urbano / extraurbano
+            efficiency = 0.85;
+        } else {                         // alte velocità
+            efficiency = 0.80;
+        }
 
         // ----------------------------
         // LAVORO MECCANICO
         // ----------------------------
         double workJoules = fTractive * length;
 
-        /**
-         * Correzione stop&go:
-         * MATSim usa velocità media → sovrastima il lavoro sulle resistenze.
-         * Questo fattore riporta il consumo su valori osservati.
-         */
-        if (avgSpeed < 13.9) { // < 50 km/h
-            workJoules *= 0.70;
-        }
+        // ----------------------------
+        // STOP & GO ESPLICITO (TRAFFICO)
+        // ----------------------------
+        double freeFlowTime = length / link.getFreespeed();
+        double congestionFactor = travelTime / freeFlowTime;
+
+        // Limitiamo l’effetto per evitare esplosioni
+        double stopGoFactor = Math.min(1.2, congestionFactor);
+        workJoules *= stopGoFactor;
 
         double totalEnergy;
 
         if (workJoules >= 0) {
-            // Trazione
-            totalEnergy = workJoules / tractionEfficiency;
+            // Consumo in trazione
+            totalEnergy = workJoules / efficiency;
         } else {
-            // Rigenerazione (limitata)
-            totalEnergy = workJoules * REGEN_EFFICIENCY;
+            // Rigenerazione con limite di potenza
+            double regenEnergy = workJoules * REGEN_EFFICIENCY;
+            double maxRegenEnergy = MAX_REGEN_POWER_W * travelTime;
+            totalEnergy = Math.max(regenEnergy, -maxRegenEnergy);
         }
 
         // ----------------------------
         // CONSUMI AUSILIARI
         // ----------------------------
-        // HVAC + elettronica di bordo (~1 kW)
-        double auxPower = 1000.0;
+        double auxPower = 1000.0; // 1 kW costante
         totalEnergy += auxPower * travelTime;
 
         // ----------------------------
@@ -196,11 +190,12 @@ public class TractiveDriveEnergyConsumption implements DriveEnergyConsumption {
         // ----------------------------
         evData.addDistanceTraveled(length);
 
-        log.debug("EV {}, link {} → consumo {:.1f} J (v={:.1f} m/s)",
+        log.debug("EV {} link {} → {:.1f} J (v={:.1f} m/s, cong={:.2f})",
                 electricVehicle.getId(),
                 link.getId(),
                 totalEnergy,
-                avgSpeed);
+                avgSpeed,
+                congestionFactor);
 
         return totalEnergy;
     }
