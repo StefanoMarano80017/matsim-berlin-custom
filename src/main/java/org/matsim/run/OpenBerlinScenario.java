@@ -1,5 +1,6 @@
 package org.matsim.run;
 
+import org.matsim.CustomMonitor.ChargingHub.TargetSocChargingHandler;
 import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
 import org.matsim.analysis.QsimTimingModule;
@@ -13,6 +14,9 @@ import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculator;
 import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import org.matsim.contrib.bicycle.BicycleTravelTime;
 import org.matsim.contrib.ev.EvConfigGroup;
+import org.matsim.contrib.ev.EvModule;
+import org.matsim.contrib.ev.fleet.ElectricFleet;
+import org.matsim.contrib.ev.infrastructure.ChargingInfrastructure;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -35,7 +39,6 @@ import com.google.inject.name.Names;
 
 import picocli.CommandLine;
 import playground.vsp.ev.UrbanEVConfigGroup;
-import playground.vsp.ev.UrbanEVModule;
 
 import java.util.List;
 
@@ -93,7 +96,7 @@ public class OpenBerlinScenario extends MATSimApplication {
                 scenario,
                 configRun.getCsvResourceHub(),
                 configRun.getCsvResourceEv(),
-                1, 0.90, 0.15,
+                1, 0.70, 0.15,
                 configRun.isDebug(),
                 configRun.isPublishOnSpring()
         );
@@ -111,21 +114,15 @@ public class OpenBerlinScenario extends MATSimApplication {
     protected Config prepareConfig(Config config) {
         // --- Creazione EV config---
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
-        evConfig.chargersFile = "matsim-berlin-custom/input/CustomInput/fake_chargers.xml"; // Placeholder
+        evConfig.chargersFile = "fake_chargers.xml"; // Placeholder
         UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
-        urbanEVConfig.setCriticalSOC(0.4);
+        urbanEVConfig.setCriticalSOC(0.9);
         config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
 
         // Register EV charging activities
         config.scoring().addActivityParams(
-            new ActivityParams(TransportMode.car + UrbanEVModule.PLUGOUT_INTERACTION).setScoringThisActivityAtAll(false)
-        );
-        config.scoring().addActivityParams(
-            new ActivityParams(TransportMode.car + UrbanEVModule.PLUGIN_INTERACTION).setScoringThisActivityAtAll(false)
-        );
-        config.scoring().addActivityParams(
-            new ActivityParams("charging")
-                    .setScoringThisActivityAtAll(true)
+            new ActivityParams("car charging")
+                    .setScoringThisActivityAtAll(false)
                     .setTypicalDuration(3600 * 2)
                     .setMinimalDuration(300)
         );
@@ -162,11 +159,15 @@ public class OpenBerlinScenario extends MATSimApplication {
         }
 
         config.replanning().addStrategySettings(
-                new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.TimeAllocationMutator).setWeight(0.15).setSubpopulation("person")
+                new StrategySettings()
+                    .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.TimeAllocationMutator)
+                    .setWeight(0.15).setSubpopulation("person")
         );
         
         config.replanning().addStrategySettings(
-                new StrategySettings().setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice).setWeight(0.15).setSubpopulation("person")
+                new StrategySettings()
+                    .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice)
+                    .setWeight(0.15).setSubpopulation("person")
         );
 
         // Forziamo ReRoute Iterazione 0
@@ -192,7 +193,7 @@ public class OpenBerlinScenario extends MATSimApplication {
     }
 
     protected void prepareControler(Controler controler, CustomModule customModule) {
-        controler.addOverridingModule(new UrbanEVModule());
+        controler.addOverridingModule(new EvModule());
         controler.addOverridingModule(customModule);
         controler.addOverridingModule(new TravelTimeBinding());
         controler.addOverridingModule(new SimWrapperModule());

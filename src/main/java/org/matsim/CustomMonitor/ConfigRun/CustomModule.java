@@ -1,8 +1,10 @@
 package org.matsim.CustomMonitor.ConfigRun;
 
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
+import org.matsim.CustomMonitor.ChargingHub.TargetSocChargingHandler;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
+import org.matsim.CustomMonitor.Monitoring.ActivityEventMonitor;
 import org.matsim.CustomMonitor.Monitoring.HubChargingMonitor;
 import org.matsim.CustomMonitor.Monitoring.LinkMonitor;
 import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
@@ -15,6 +17,7 @@ import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationDefaultImpl;
 import org.matsim.core.controler.AbstractModule;
+import org.matsim.core.mobsim.qsim.AbstractQSimModule;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
@@ -24,6 +27,7 @@ import org.springframework.core.io.Resource;
 
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,7 +39,7 @@ import org.apache.logging.log4j.Logger;
 
 public class CustomModule extends AbstractModule {
 
-    private static final Logger log = LogManager.getLogger(EvFleetManager.class);
+    private static final Logger log = LogManager.getLogger(CustomModule.class);
 
     private final HubManager     hubManager;
     private final EvFleetManager evFleetManager;
@@ -164,6 +168,11 @@ public class CustomModule extends AbstractModule {
         LinkMonitor linkMonitor = new LinkMonitor(evFleetManager, this.publish_on_spring);
         addEventHandlerBinding().toInstance(linkMonitor);
         /*
+        *   monitor attività agenti
+        */
+        ActivityEventMonitor activityEventMonitor = new ActivityEventMonitor();
+        addEventHandlerBinding().toInstance(activityEventMonitor);
+        /*
         *   monitor inizio e fine ricarica a un hub
         */
         HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(hubManager, evFleetManager, this.publish_on_spring);
@@ -183,6 +192,15 @@ public class CustomModule extends AbstractModule {
                 return new EvConsumptionModelFactory(providerEvFleetManager);
             }
         }).asEagerSingleton();
+        /*
+        *  Handler della ricarica nel piano + strategia soc target
+        */
+        installQSimModule(new AbstractQSimModule() {
+			@Override protected void configureQSim() {
+				bind(TargetSocChargingHandler.class).in(Singleton.class);
+				addMobsimScopeEventHandlerBinding().to( TargetSocChargingHandler.class);
+			}
+		});
 
         if(debug == true) {
             Set<Id<Vehicle>> electricVehicleIds = Collections.unmodifiableSet(evFleetManager.getFleet().keySet());
