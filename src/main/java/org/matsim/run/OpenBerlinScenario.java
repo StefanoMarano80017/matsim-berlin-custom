@@ -2,6 +2,7 @@ package org.matsim.run;
 
 import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
+import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.analysis.QsimTimingModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.api.core.v01.Scenario;
@@ -41,13 +42,11 @@ import java.util.List;
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
-
     /*
     * Parametri standard simulazione
     */
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
-    
     // Tutti i parametri della run
     private ConfigRun configRun; 
 
@@ -74,33 +73,25 @@ public class OpenBerlinScenario extends MATSimApplication {
 		MATSimApplication.run(OpenBerlinScenario.class, args);
 	}
 
-    public void runScenario() {
+    public SimulationBridgeInterface RunScenario() {
         if (configRun == null) {
             throw new IllegalStateException("ConfigRun non inizializzato. Usa il builder ConfigRun prima di runScenario.");
         }
-
         // --- 1. Carica Config dal file impostato nel ConfigRun ---
         Config config = ConfigUtils.loadConfig(String.format(configRun.getConfigPath(), VERSION, VERSION));
-
         // --- 2. Applica tutte le personalizzazioni di prepareConfig ---
         config = prepareConfig(config);
-
         // --- 3. Crea lo Scenario dal Config ---
         Scenario scenario = ScenarioUtils.loadScenario(config);
-
         // --- 4. Prepara il CustomModule tramite ConfigRun ---
-        CustomModule customModule = new CustomModule(
-                scenario,
-                configRun
-        );
+        CustomModule customModule =  new CustomModule(scenario, configRun);
         customModule.PrepareScenarioEV(scenario);
-
-        // --- 5. Prepara il Controler e avvia ---
         Controler controler = new Controler(scenario);
         prepareControler(controler, customModule);
-
         controler.run();
+        return new SimulationBridgeInterface(customModule.getHubManager(), customModule.getEvFleetManager());
     }
+
 
     @SuppressWarnings("deprecation")
     @Override

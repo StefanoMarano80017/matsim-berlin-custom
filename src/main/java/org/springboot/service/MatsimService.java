@@ -5,13 +5,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
+import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springboot.SimulationBridge.SimulationPublisherService;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springboot.SimulationBridge.SimulationBridge;
+
 
 @Service
 public class MatsimService {
@@ -21,7 +24,7 @@ public class MatsimService {
     private Future<?> currentFuture = null;
 
     @Autowired
-    private SimulationBridge simulationBridge;
+    private SimulationPublisherService simulationPublisherService;
 
     /**
      * Avvia il thread della simulazione.
@@ -41,7 +44,7 @@ public class MatsimService {
             }
         });
 
-        simulationBridge.publishWsSimpleText("Simulazione Avviata");
+        //simulationBridge.publishWsSimpleText("Simulazione Avviata");
         return "Simulazione avviata.";
     }
 
@@ -70,11 +73,15 @@ public class MatsimService {
                 .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
                 .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
                 .configPath("input/v%s/berlin-v%s.config.xml")
+                .vehicleStrategy(ConfigRun.VehicleGenerationStrategyEnum.FROM_CSV)
+                .planStrategy(ConfigRun.PlanGenerationStrategyEnum.STATIC)
                 .sampleSizeStatic(0.001)
                 .stepSize(900.0)
                 .numeroVeicoli(1)
                 .socMedio(0.70)
                 .socStdDev(0.05)
+                .targetSocMean(0.90)
+                .targetSocStdDev(0.05)
                 .publishOnSpring(true)
                 .debug(true)
                 .build();
@@ -82,7 +89,8 @@ public class MatsimService {
         // Crea l'istanza di scenario con la configurazione
         OpenBerlinScenario scenario = new OpenBerlinScenario().withConfigRun(configRun);
         log.info("Avvio simulazione MATSim...");
-        scenario.runScenario();
+        SimulationBridgeInterface simulationBridgeInterface = scenario.RunScenario();
+        simulationPublisherService.setInterface(simulationBridgeInterface);
         log.info("Scenario MATSim completato!");
     }
 

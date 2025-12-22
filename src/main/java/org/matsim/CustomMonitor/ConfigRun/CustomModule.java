@@ -14,6 +14,7 @@ import org.matsim.CustomMonitor.EVfleet.strategy.plan.StaticPlanGenerator;
 import org.matsim.CustomMonitor.Monitoring.HubChargingMonitor;
 import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.Monitoring.TimeStepSocMonitor;
+import org.matsim.CustomMonitor.Monitoring.VehicleStatusMonitor;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.api.core.v01.TransportMode;
@@ -53,19 +54,14 @@ public class CustomModule extends AbstractModule {
 
     private final ConfigRun config;
     private final boolean debug;
-    private final Boolean publish_on_spring;
 
     public CustomModule(Scenario scenario, ConfigRun config) {
         this.config = config;
-
         this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
         this.hubManager     = new HubManager(scenario.getNetwork(), infraSpec);
         this.evFleetManager = new EvFleetManager();
-
         this.debug             = config.isDebug();
-        this.publish_on_spring = config.isPublishOnSpring();
     }
-
 
     public void PrepareScenarioEV(Scenario scenario) {
         // --- Preparazione Scenario ---
@@ -123,7 +119,6 @@ public class CustomModule extends AbstractModule {
             default           -> throw new RuntimeException();
         };
     }
-
 
     @SuppressWarnings("deprecation")
     private void registerDefaultVehicles(
@@ -188,13 +183,18 @@ public class CustomModule extends AbstractModule {
         /*
         *   monitor inizio e fine ricarica a un hub
         */
-        HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(hubManager, evFleetManager, this.publish_on_spring);
+        HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(hubManager, evFleetManager);
         addEventHandlerBinding().toInstance(hubChargingMonitor);
         /*
         *   Andamento Soc nel tempo, settare il timestep per aggiornamento in discreto 
         */
-        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, hubManager, config.getStepSize(), this.publish_on_spring);        
+        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, hubManager, config.getStepSize());        
         addMobsimListenerBinding().toInstance(timeStepSocMonitor);
+        /*
+        *  monitor dello stato del veicolo
+        */
+        VehicleStatusMonitor vehicleStatusMonitor = new VehicleStatusMonitor(evFleetManager);
+        addEventHandlerBinding().toInstance(vehicleStatusMonitor);
         /*
         *  Modello di consumo del SoC
         */

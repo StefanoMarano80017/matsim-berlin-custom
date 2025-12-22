@@ -1,6 +1,5 @@
 package org.matsim.CustomMonitor.Monitoring;
 
-import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.api.core.v01.Id;
@@ -15,22 +14,15 @@ import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 import org.matsim.contrib.ev.charging.ChargingStartEvent;
 import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
 import org.matsim.vehicles.Vehicle;
+public class VehicleStatusMonitor implements ChargingStartEventHandler, 
+                                            ChargingEndEventHandler, 
+                                            VehicleEntersTrafficEventHandler,
+                                            ActivityStartEventHandler, 
+                                            ActivityEndEventHandler{
 
-import com.google.inject.name.Named;
-
-public class VehicleStatusMonitor   extends AbstractEventMonitor
-                                    implements ChargingStartEventHandler, ChargingEndEventHandler, 
-                                                VehicleEntersTrafficEventHandler,
-                                                ActivityStartEventHandler, ActivityEndEventHandler{
-
-    private static final Logger log = AbstractEventMonitor.log;
     private final EvFleetManager evFleetManager;
 
-    public VehicleStatusMonitor(
-        EvFleetManager evFleetManager, 
-        @Named("serverEnabled") boolean publishOnSpring
-    ) {
-        super(publishOnSpring);
+    public VehicleStatusMonitor(EvFleetManager evFleetManager) {
         this.evFleetManager = evFleetManager;
     }
 
@@ -39,7 +31,7 @@ public class VehicleStatusMonitor   extends AbstractEventMonitor
     public void handleEvent(ChargingEndEvent event) {
         EvModel vehModel = evFleetManager.getVehicle(event.getVehicleId());
         if (vehModel != null) {
-            vehModel.setState(EvModel.State.CHARGING);
+            vehModel.setState(EvModel.State.IDLE);
         }
     }
 
@@ -47,7 +39,7 @@ public class VehicleStatusMonitor   extends AbstractEventMonitor
     public void handleEvent(ChargingStartEvent event) {
         EvModel vehModel = evFleetManager.getVehicle(event.getVehicleId());
         if (vehModel != null) {
-            vehModel.setState(EvModel.State.IDLE);
+            vehModel.setState(EvModel.State.CHARGING);
         }
     }
 
@@ -66,9 +58,6 @@ public class VehicleStatusMonitor   extends AbstractEventMonitor
         if (vehModel != null) {
             vehModel.setState(EvModel.State.PARKED);
         }
-        
-        String act = event.getActType();
-
     }
 
     @Override

@@ -267,10 +267,6 @@ public class ConfigRun {
                 throw new IllegalStateException("PlanGenerationStrategy must be set");
             }
 
-            if (hubStrategy == null) {
-                throw new IllegalStateException("HubGenerationStrategy must be set");
-            }
-
             /* ===== Validazione risorse in base alla strategia ===== */
             if (vehicleStrategy == VehicleGenerationStrategyEnum.FROM_CSV && csvResourceEv == null) {
                 throw new IllegalStateException("csvResourceEv required for FROM_CSV vehicle strategy");

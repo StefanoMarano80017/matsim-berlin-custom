@@ -1,9 +1,7 @@
 package org.matsim.CustomMonitor.Monitoring;
 
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.contrib.ev.fleet.ElectricFleet;
@@ -12,13 +10,13 @@ import org.matsim.core.mobsim.framework.events.MobsimInitializedEvent;
 import org.matsim.core.mobsim.framework.listeners.MobsimBeforeSimStepListener;
 import org.matsim.core.mobsim.framework.listeners.MobsimInitializedListener;
 import org.matsim.core.mobsim.qsim.QSim;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
-import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
-public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBeforeSimStepListener, MobsimInitializedListener {
+public class TimeStepSocMonitor implements MobsimBeforeSimStepListener, MobsimInitializedListener {
+
+    private static final Logger log = LogManager.getLogger(TimeStepSocMonitor.class);
 
     private final EvFleetManager evFleetManager;
     private final HubManager hubManager;
@@ -30,10 +28,8 @@ public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBe
     public TimeStepSocMonitor(
             EvFleetManager evFleetManager,
             HubManager hubManager,
-            @Named("timeStepMonitorStep") double stepSize,
-            @Named("serverEnabled") boolean publishOnSpring
+            @Named("timeStepMonitorStep") double stepSize
     ) {
-        super(publishOnSpring);
         this.evFleetManager = evFleetManager;
         this.hubManager     = hubManager;
         this.stepSize       = stepSize;
@@ -59,7 +55,7 @@ public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBe
                 ElectricFleet electricFleet = getElectricFleetFromQSim();
                 if (electricFleet != null) {
                     evFleetManager.updateSoc(electricFleet);
-                    publishTimeStep(simTime);
+                    //publishTimeStep(simTime);
                 }
             } catch (Exception e) {
                 log.error("[TimeStepMonitor] Errore aggiornamento stato veicoli: {}", e.getMessage());
@@ -75,6 +71,8 @@ public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBe
         }
     }
 
+    /*
+     
     private void publishTimeStep(double simTime) {
         List<VehicleStatus> vehicleStatuses =
             evFleetManager.getFleet().values().stream().map(v -> new VehicleStatus(
@@ -92,4 +90,5 @@ public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBe
 
         publishEvent(payload);
     }
+        */
 }

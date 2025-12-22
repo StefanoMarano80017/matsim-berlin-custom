@@ -6,6 +6,7 @@ import org.matsim.contrib.ev.charging.ChargingEndEvent;
 import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 import org.matsim.contrib.ev.charging.ChargingStartEvent;
 import org.matsim.contrib.ev.charging.ChargingStartEventHandler;
+import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
 
@@ -17,19 +18,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class HubChargingMonitor extends AbstractEventMonitor implements ChargingStartEventHandler, ChargingEndEventHandler {
+public class HubChargingMonitor implements ChargingStartEventHandler, ChargingEndEventHandler {
 
-    private static final Logger log = AbstractEventMonitor.log;
+    private static final Logger log = LogManager.getLogger(HubChargingMonitor.class);
 
     private final HubManager hubManager;
     private final EvFleetManager evFleetManager;
 
     public HubChargingMonitor(
         HubManager hubManager, 
-        EvFleetManager evFleetManager, 
-        @Named("serverEnabled") boolean publishOnSpring
+        EvFleetManager evFleetManager
     ) {
-        super(publishOnSpring);
         this.hubManager = hubManager;
         this.evFleetManager = evFleetManager;
     }
@@ -45,7 +44,7 @@ public class HubChargingMonitor extends AbstractEventMonitor implements Charging
                 hubId,
                 hubManager.getHubOccupancy(hubId));
 
-        publishChargingEvent(event.getTime());
+        //publishChargingEvent(event.getTime());
     }
 
     @Override
@@ -66,12 +65,13 @@ public class HubChargingMonitor extends AbstractEventMonitor implements Charging
                 hubManager.getHubOccupancy(hubId),
                 hubManager.getHubEnergy(hubId));
 
-        publishChargingEvent(event.getTime());
+        //publishChargingEvent(event.getTime());
     }
 
     /**
      * Pubblica lo stato attuale dei veicoli e hub come payload TimeStepPayload sul bus.
      */
+    /* 
     private void publishChargingEvent(double simTime) {
         if (!publishOnSpring) return;
 
@@ -101,4 +101,5 @@ public class HubChargingMonitor extends AbstractEventMonitor implements Charging
             log.error("[HubChargingMonitor] Errore durante la pubblicazione su EventBus: {}", e.getMessage());
         }
     }
+        */
 }
