@@ -1,5 +1,6 @@
 package org.matsim.CustomMonitor.EVfleet;
 
+import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
 import org.matsim.CustomMonitor.EVfleet.factory.EvVehicleFactory;
 import org.matsim.CustomMonitor.EVfleet.strategy.fleet.EvFleetStrategy;
 import org.matsim.CustomMonitor.EVfleet.strategy.plan.PlanGenerationStrategy;
@@ -8,7 +9,6 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.contrib.ev.fleet.ElectricFleet;
 import org.matsim.vehicles.Vehicle;
-import org.springframework.core.io.Resource;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -49,16 +49,19 @@ public class EvFleetManager{
     // ----------------------------------------------------
     // PUBLIC API
     // ----------------------------------------------------
-    public void generateFleetFromCsv(
-        Resource csv, 
-        Scenario scenario, 
-        int count, 
-        double socMean, 
-        double socStdDev
-    ) {
-        log.info("[EvFleetManager] Generating EV fleet from CSV: " + csv.toString());
+    public void generateFleet(Scenario scenario, ConfigRun config){
+        if (fleetStrategy == null)
+            throw new IllegalStateException("FleetGenerationStrategy not set");
+
+        if (planStrategy == null)
+            throw new IllegalStateException("PlanGenerationStrategy not set");
+
+        if (vehicleFactory == null)
+            throw new IllegalStateException("EvVehicleFactory not set");
+
+        log.info("[EvFleetManager] Generating EV fleet");
         // 1. Usa la strategia per generare gli EvModel
-        List<EvModel> EVmodels = fleetStrategy.generateFleet(csv, count, socMean, socStdDev);
+        List<EvModel> EVmodels = fleetStrategy.generateFleet(config.getCsvResourceEv(), config.getNumeroVeicoli(), config.getSocMedio(), config.getSocStdDev());
         // 2. Registra modelli nel manager
         EVmodels.forEach(model -> 
             fleet.put(

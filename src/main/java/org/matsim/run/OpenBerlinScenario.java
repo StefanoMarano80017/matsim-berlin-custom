@@ -1,6 +1,5 @@
 package org.matsim.run;
 
-import org.matsim.CustomMonitor.ChargingHub.TargetSocChargingHandler;
 import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
 import org.matsim.CustomMonitor.ConfigRun.CustomModule;
 import org.matsim.analysis.QsimTimingModule;
@@ -15,8 +14,6 @@ import org.matsim.contrib.bicycle.BicycleLinkSpeedCalculatorDefaultImpl;
 import org.matsim.contrib.bicycle.BicycleTravelTime;
 import org.matsim.contrib.ev.EvConfigGroup;
 import org.matsim.contrib.ev.EvModule;
-import org.matsim.contrib.ev.fleet.ElectricFleet;
-import org.matsim.contrib.ev.infrastructure.ChargingInfrastructure;
 import org.matsim.contrib.vsp.scoring.RideScoringParamsFromCarParams;
 import org.matsim.core.config.Config;
 import org.matsim.core.config.ConfigUtils;
@@ -69,7 +66,7 @@ public class OpenBerlinScenario extends MATSimApplication {
     // Builder fluido per configurare la run
     public OpenBerlinScenario withConfigRun(ConfigRun configRun) {
         this.configRun = configRun;
-        this.sampleSizeStatic = configRun.GetsampleSizeStatic();
+        this.sampleSizeStatic = configRun.getSampleSizeStatic();
         return this;
     }
 
@@ -94,11 +91,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         // --- 4. Prepara il CustomModule tramite ConfigRun ---
         CustomModule customModule = new CustomModule(
                 scenario,
-                configRun.getCsvResourceHub(),
-                configRun.getCsvResourceEv(),
-                1, 0.70, 0.15,
-                configRun.isDebug(),
-                configRun.isPublishOnSpring()
+                configRun
         );
         customModule.PrepareScenarioEV(scenario);
 

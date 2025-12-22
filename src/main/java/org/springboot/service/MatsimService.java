@@ -71,6 +71,10 @@ public class MatsimService {
                 .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
                 .configPath("input/v%s/berlin-v%s.config.xml")
                 .sampleSizeStatic(0.001)
+                .stepSize(900.0)
+                .numeroVeicoli(1)
+                .socMedio(0.70)
+                .socStdDev(0.05)
                 .publishOnSpring(true)
                 .debug(true)
                 .build();

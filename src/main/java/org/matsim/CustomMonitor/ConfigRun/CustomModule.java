@@ -2,8 +2,15 @@ package org.matsim.CustomMonitor.ConfigRun;
 
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.ChargingHub.TargetSocChargingHandler;
+import org.matsim.CustomMonitor.ConfigRun.ConfigRun.PlanGenerationStrategyEnum;
+import org.matsim.CustomMonitor.ConfigRun.ConfigRun.VehicleGenerationStrategyEnum;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
+import org.matsim.CustomMonitor.EVfleet.factory.EvVehicleFactory;
+import org.matsim.CustomMonitor.EVfleet.strategy.fleet.CsvFleetGenerationStrategy;
+import org.matsim.CustomMonitor.EVfleet.strategy.fleet.EvFleetStrategy;
+import org.matsim.CustomMonitor.EVfleet.strategy.plan.PlanGenerationStrategy;
+import org.matsim.CustomMonitor.EVfleet.strategy.plan.StaticPlanGenerator;
 import org.matsim.CustomMonitor.Monitoring.HubChargingMonitor;
 import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.Monitoring.TimeStepSocMonitor;
@@ -16,6 +23,7 @@ import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecificationDefaultImpl;
 import org.matsim.core.controler.AbstractModule;
 import org.matsim.core.mobsim.qsim.AbstractQSimModule;
+import org.matsim.prepare.choices.RandomPlanGenerator;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
@@ -43,35 +51,19 @@ public class CustomModule extends AbstractModule {
     private final EvFleetManager evFleetManager;
     private final ChargingInfrastructureSpecification infraSpec;
 
-    private final Resource  chargingHubPath;
-    private final Resource  evDatasetPath;
-    private final int       sampleSize;
-    private final double    socMean;
-    private final double    socStdDev;
-    
+    private final ConfigRun config;
     private final boolean debug;
     private final Boolean publish_on_spring;
 
-    public CustomModule(
-        Scenario scenario, 
-        Resource chargingHubPath,
-        Resource evDatasetPath,
-        int      sampleSize, 
-        double   socMean, 
-        double   socStdDev, 
-        boolean  debug, 
-        Boolean  publish_on_spring
-    ) {
-        this.chargingHubPath   = chargingHubPath;
-        this.evDatasetPath     = evDatasetPath;
-        this.sampleSize        = sampleSize;
-        this.socMean           = socMean;
-        this.socStdDev         = socStdDev;
-        this.infraSpec         = new ChargingInfrastructureSpecificationDefaultImpl();
-        this.hubManager        = new HubManager(scenario.getNetwork(), infraSpec);
-        this.evFleetManager    = new EvFleetManager();
-        this.debug             = debug;
-        this.publish_on_spring = publish_on_spring;
+    public CustomModule(Scenario scenario, ConfigRun config) {
+        this.config = config;
+
+        this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.hubManager     = new HubManager(scenario.getNetwork(), infraSpec);
+        this.evFleetManager = new EvFleetManager();
+
+        this.debug             = config.isDebug();
+        this.publish_on_spring = config.isPublishOnSpring();
     }
 
 
@@ -89,16 +81,49 @@ public class CustomModule extends AbstractModule {
     }
 
     private void loadChargingHubs() {
-        this.hubManager.createHub(chargingHubPath);
+        this.hubManager.createHub(config.getCsvResourceHub());
     }
 
     private EvFleetManager initializeEvFleetManager(Scenario scenario) {
-        evFleetManager.setFleetStrategy(new org.matsim.CustomMonitor.EVfleet.strategy.fleet.CsvFleetGenerationStrategy());
-        evFleetManager.setPlanStrategy(new org.matsim.CustomMonitor.EVfleet.strategy.plan.StaticPlanGenerator());
-        evFleetManager.setVehicleFactory(new org.matsim.CustomMonitor.EVfleet.factory.EvVehicleFactory());
-        evFleetManager.generateFleetFromCsv(evDatasetPath, scenario, sampleSize, socMean, socStdDev);
+
+        evFleetManager.setFleetStrategy(
+            createFleetStrategy(config.getVehicleStrategy())
+        );
+
+        evFleetManager.setPlanStrategy(
+            createPlanStrategy(config.getPlanStrategy())
+        );
+
+        evFleetManager.setVehicleFactory(
+            new EvVehicleFactory()
+        );
+
+        evFleetManager.generateFleet(
+            scenario,
+            config
+        );
+
         return evFleetManager;
     }
+
+    private EvFleetStrategy createFleetStrategy(VehicleGenerationStrategyEnum strategy) {
+        return switch (strategy) {
+            case FROM_CSV -> new CsvFleetGenerationStrategy();
+            case UNIFORM  -> throw new RuntimeException();
+            case NORMAL   -> throw new RuntimeException();
+            default       -> throw new RuntimeException();
+        };
+    }
+
+    private PlanGenerationStrategy createPlanStrategy(PlanGenerationStrategyEnum strategy) {
+        return switch (strategy) {
+            case STATIC       -> new StaticPlanGenerator();
+            case RANDOM       -> throw new RuntimeException();
+            case FROM_CSV     -> throw new RuntimeException();
+            default           -> throw new RuntimeException();
+        };
+    }
+
 
     @SuppressWarnings("deprecation")
     private void registerDefaultVehicles(
@@ -168,7 +193,7 @@ public class CustomModule extends AbstractModule {
         /*
         *   Andamento Soc nel tempo, settare il timestep per aggiornamento in discreto 
         */
-        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, hubManager, 900.0, this.publish_on_spring);        
+        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, hubManager, config.getStepSize(), this.publish_on_spring);        
         addMobsimListenerBinding().toInstance(timeStepSocMonitor);
         /*
         *  Modello di consumo del SoC
