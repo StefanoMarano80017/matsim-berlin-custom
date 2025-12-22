@@ -23,8 +23,7 @@ public class WebSocketUpdate<T> {
     private String statusMessage;
 
     // Costruttore vuoto
-    public WebSocketUpdate() {
-    }
+    public WebSocketUpdate() {}
 
     // Costruttore completo
     public WebSocketUpdate(String type, double progress, T payload, String statusMessage) {

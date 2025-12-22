@@ -2,7 +2,6 @@ package org.matsim.CustomMonitor.Monitoring;
 
 import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
-import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.contrib.ev.charging.ChargingEndEvent;
 import org.matsim.contrib.ev.charging.ChargingEndEventHandler;
 import org.matsim.contrib.ev.charging.ChargingStartEvent;
@@ -40,12 +39,6 @@ public class HubChargingMonitor extends AbstractEventMonitor implements Charging
         String hubId = hubManager.getHubIdForCharger(event.getChargerId());
         hubManager.incrementOccupancy(hubId);
         hubManager.recordTimeline(event.getTime());
-
-        EvModel vehModel = evFleetManager.getVehicle(event.getVehicleId());
-        if (vehModel != null) {
-            vehModel.setState(EvModel.State.CHARGING);
-        }
-
         log.info("[HubChargingMonitor] [%.0f] START charging: charger=%s, hub=%s, occupancy=%d",
                 event.getTime(),
                 event.getChargerId(),
@@ -64,11 +57,6 @@ public class HubChargingMonitor extends AbstractEventMonitor implements Charging
         hubManager.addChargerEnergy(event.getChargerId(), energy);
         hubManager.addHubEnergy(hubId, energy);
         hubManager.recordTimeline(event.getTime());
-
-        EvModel vehModel = evFleetManager.getVehicle(event.getVehicleId());
-        if (vehModel != null) {
-            vehModel.setState(null);
-        }
 
         log.info("[HubChargingMonitor] [%.0f] END charging: charger=%s, hub=%s, charge=%.2fJ, occupancy=%d, totalHubEnergy=%.2fJ",
                 event.getTime(),

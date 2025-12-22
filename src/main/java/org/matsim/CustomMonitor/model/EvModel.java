@@ -4,10 +4,11 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.vehicles.Vehicle;
 
 /**
- * Modello di veicolo elettrico completo, con dati statici e dinamici.
+ * Modello di veicolo elettrico completo, con dati statici e dinamici,
+ * aggiornato per supportare "dirty flags" per ottimizzare gli aggiornamenti WebSocket.
  */
 public class EvModel {
-    // --- Dati statici (specifiche del veicolo) ---
+    // --- Dati statici ---
     private final Id<Vehicle> vehicleId;
     private final String manufacturer;
     private final String model;
@@ -26,24 +27,28 @@ public class EvModel {
     private final int    seats;
     private final String drivetrain;
     private final String segment;
-    private final int    lengthMm;
-    private final int    widthMm;
-    private final int    heightMm;
+    private final int lengthMm;
+    private final int widthMm;
+    private final int heightMm;
     private final String carBodyType;
 
-    // --- Dati dinamici (stato di simulazione) ---
-    private double currentSoc;           // 0.0-1.0
-    private double currentEnergyJoules;  // Livello corrente in Joule
-    private double distanceTraveledKm;   // Distanza percorsa
-    private State state;                 // Stato del veicolo (enum)
-    private String linkId;               // opzionale: link corrente, valido se MOVING o CHARGING
+    // --- Dati dinamici ---
+    private double currentSoc;           
+    private double currentEnergyJoules;  
+    private double distanceTraveledKm;   
+    private State state;                 
+    private String linkId;               
+
+    // --- Dirty flag per delta WebSocket ---
+    private boolean dirty = false;
 
     // Enum interno per lo stato del veicolo
     public enum State {
         MOVING,
         STOPPED,
         CHARGING,
-        PARKED
+        PARKED,
+        IDLE
     }
 
     // --- Costruttore ---
@@ -98,17 +103,47 @@ public class EvModel {
         this.currentSoc = 1.0;
         this.currentEnergyJoules = nominalCapacityKwh * 3.6e6;
         this.distanceTraveledKm = 0.0;
-        this.state = State.STOPPED; // default
+        this.state = State.STOPPED;
+        this.dirty = true; // segnala come modificato inizialmente
     }
 
     // --- Aggiornamento dinamico ---
     public void updateDynamicState(double soc, double energyJoules) {
-        this.currentSoc = soc;
-        this.currentEnergyJoules = energyJoules;
+        if (this.currentSoc != soc || this.currentEnergyJoules != energyJoules) {
+            this.currentSoc = soc;
+            this.currentEnergyJoules = energyJoules;
+            this.dirty = true;
+        }
     }
 
     public void addDistanceTraveled(double distanceMeters) {
-        this.distanceTraveledKm += (distanceMeters / 1000.0);
+        if (distanceMeters != 0.0) {
+            this.distanceTraveledKm += (distanceMeters / 1000.0);
+            this.dirty = true;
+        }
+    }
+
+    public void setState(State state) {
+        if (this.state != state) {
+            this.state = state;
+            this.dirty = true;
+        }
+    }
+
+    public void setLinkId(String linkId) {
+        if (this.linkId == null || !this.linkId.equals(linkId)) {
+            this.linkId = linkId;
+            this.dirty = true;
+        }
+    }
+
+    // --- Dirty flag ---
+    public boolean isDirty() {
+        return dirty;
+    }
+
+    public void resetDirty() {
+        this.dirty = false;
     }
 
     // --- Getter ---
@@ -138,21 +173,7 @@ public class EvModel {
     public double getCurrentEnergyJoules()      { return currentEnergyJoules; }
     public double getDistanceTraveledKm()       { return distanceTraveledKm; }
     public State getState()                     { return state; }
-    public String getLinkId()                   { return linkId;}
-
-    // --- Backward compatibility ---
-    public boolean isCharging() {
-        return this.state == State.CHARGING;
-    }
-
-    @Deprecated
-    public void setCharging() {
-        this.state = State.CHARGING;
-    }
-
-    public void setLinkId(String linkId){
-        this.linkId = linkId;
-    }
+    public String getLinkId()                   { return linkId; }
 
     // --- Autonomia stimata ---
     public double getEstimatedRemainingRangeKm() {
@@ -161,8 +182,13 @@ public class EvModel {
         return currentEnergyKwh / consumptionKwhPerKm;
     }
 
-    // Setter per lo stato
-    public void setState(State state) {
-        this.state = state;
+    // --- Backward compatibility ---
+    public boolean isCharging() {
+        return this.state == State.CHARGING;
+    }
+
+    @Deprecated
+    public void setCharging() {
+        setState(State.CHARGING);
     }
 }

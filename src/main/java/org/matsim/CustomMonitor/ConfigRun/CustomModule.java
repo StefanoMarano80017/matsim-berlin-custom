@@ -4,9 +4,7 @@ import org.matsim.CustomMonitor.ChargingHub.HubManager;
 import org.matsim.CustomMonitor.ChargingHub.TargetSocChargingHandler;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
 import org.matsim.CustomMonitor.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
-import org.matsim.CustomMonitor.Monitoring.ActivityEventMonitor;
 import org.matsim.CustomMonitor.Monitoring.HubChargingMonitor;
-import org.matsim.CustomMonitor.Monitoring.LinkMonitor;
 import org.matsim.CustomMonitor.Monitoring.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.Monitoring.TimeStepSocMonitor;
 import org.matsim.api.core.v01.Id;
@@ -162,16 +160,6 @@ public class CustomModule extends AbstractModule {
         */
         bind(EvFleetManager.class).toInstance(evFleetManager);
         bind(HubManager.class).toInstance(hubManager);
-        /*
-        *   monitor percorsi veicoli 
-        */
-        LinkMonitor linkMonitor = new LinkMonitor(evFleetManager, this.publish_on_spring);
-        addEventHandlerBinding().toInstance(linkMonitor);
-        /*
-        *   monitor attività agenti
-        */
-        ActivityEventMonitor activityEventMonitor = new ActivityEventMonitor();
-        addEventHandlerBinding().toInstance(activityEventMonitor);
         /*
         *   monitor inizio e fine ricarica a un hub
         */

@@ -53,7 +53,6 @@ public class TimeStepSocMonitor extends AbstractEventMonitor implements MobsimBe
     public void notifyMobsimBeforeSimStep(MobsimBeforeSimStepEvent event) {
         double simTime = event.getSimulationTime();
         if (qSim == null) return;
-
         if (simTime - lastUpdate >= stepSize) {
             lastUpdate = simTime;
             try {
