@@ -1,26 +1,26 @@
 package org.springboot.DTO.WebSocketDTO.payload;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.Map;
 
 @Schema(description = "payload aggiornamento hub via WebSocket")
 public class HubStatusPayload {
 
     private String hubId;
-    private double energy;       // energia totale consumata
-    private int occupancy;       // numero di veicoli in carica
+    private double energy;                          // energia totale consumata dall’hub
+    private int occupancy;                          // numero di veicoli in carica
+    private Map<String, ChargerStatus> chargers;    // stato dei charger
 
-    // Costruttore vuoto
     public HubStatusPayload() {
     }
 
-    // Costruttore completo
-    public HubStatusPayload(String hubId, double energy, int occupancy) {
+    public HubStatusPayload(String hubId, double energy, int occupancy, Map<String, ChargerStatus> chargers) {
         this.hubId = hubId;
         this.energy = energy;
         this.occupancy = occupancy;
+        this.chargers = chargers;
     }
 
-    // Getter e setter
     public String getHubId() {
         return hubId;
     }
@@ -45,13 +45,21 @@ public class HubStatusPayload {
         this.occupancy = occupancy;
     }
 
-    // Optional: toString()
+    public Map<String, ChargerStatus> getChargers() {
+        return chargers;
+    }
+
+    public void setChargers(Map<String, ChargerStatus> chargers) {
+        this.chargers = chargers;
+    }
+
     @Override
     public String toString() {
         return "HubStatusPayload{" +
                 "hubId='" + hubId + '\'' +
                 ", energy=" + energy +
                 ", occupancy=" + occupancy +
+                ", chargers=" + chargers +
                 '}';
     }
 }

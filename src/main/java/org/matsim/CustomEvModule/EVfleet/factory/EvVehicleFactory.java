@@ -1,6 +1,6 @@
 package org.matsim.CustomEvModule.EVfleet.factory;
 
-import org.matsim.CustomEvModule.model.EvModel;
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.api.core.v01.Id;
 import org.matsim.contrib.ev.fleet.*;
 import org.matsim.vehicles.*;

@@ -11,7 +11,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
-import org.matsim.CustomEvModule.ChargingHub.HubManager;
+import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.factory.EvVehicleFactory;
 import org.matsim.CustomEvModule.EVfleet.strategy.fleet.CsvFleetGenerationStrategy;
@@ -37,8 +37,7 @@ public final class CustomEvContext {
     private final ChargingInfrastructureSpecification infraSpec;
 
     public CustomEvContext(Scenario scenario, ConfigRun config) {
-
-        this.infraSpec = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
         this.hubManager     = initializeHubManager(scenario, config, infraSpec);
         this.evFleetManager = initializeEvFleetManager(scenario, config);
 

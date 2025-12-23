@@ -1,6 +1,6 @@
 package org.matsim.CustomEvModule.EVfleet.strategy.fleet;
 
-import org.matsim.CustomEvModule.model.EvModel;
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.springframework.core.io.Resource;
 
 import java.util.List;

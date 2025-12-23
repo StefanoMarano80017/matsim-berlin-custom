@@ -12,8 +12,8 @@ import org.matsim.vehicles.Vehicle;
 *  Custom Libs
 */
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
-import org.matsim.CustomEvModule.ChargingHub.HubManager;
-import org.matsim.CustomEvModule.ChargingHub.TargetSocChargingHandler;
+import org.matsim.CustomEvModule.Hub.HubManager;
+import org.matsim.CustomEvModule.Hub.TargetSocChargingHandler;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EnergyConsumption.EvConsumptionModelFactory;
 import org.matsim.CustomEvModule.Monitoring.HubChargingMonitor;

@@ -38,7 +38,7 @@ public class SimulationBridge {
      * @param hubManager     Manager hub
      * @param fullSnapshot   true = invia tutto, false = solo delta dirty
      */
-    public void publishSimulationSnapshot(
+    public boolean publishSimulationSnapshot(
         SimulationBridgeInterface simulationBridgeInterface,
         double simTimestamp,
         boolean fullSnapshot
@@ -52,10 +52,12 @@ public class SimulationBridge {
                 if (!fullSnapshot) {
                     simulationBridgeInterface.resetDirty();
                 }
+                return true;
             }
         } catch (Exception e) {
             logger.error("Errore durante publishSimulationSnapshot", e);
         }
+        return false;
     }
 
     // --- LOW-LEVEL WS ---

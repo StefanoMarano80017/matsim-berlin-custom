@@ -1,7 +1,7 @@
 package org.matsim.CustomEvModule.Monitoring;
 
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
-import org.matsim.CustomEvModule.model.EvModel;
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.events.ActivityEndEvent;
 import org.matsim.api.core.v01.events.ActivityStartEvent;

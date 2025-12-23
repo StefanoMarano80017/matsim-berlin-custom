@@ -15,8 +15,8 @@ public class SimulationPublisherService {
     // Tempo simulato in secondi
     private double simTimeSeconds = 0.0;
     // Passo di simulazione (quanto tempo simulato passa ad ogni schedulazione)
-    private final double simStepSeconds = 20.0; // 20s simulati per tick
-    private final double simEndSeconds = 24 * 3600; // 24h in secondi
+    private final double simStepSeconds = 900.0; // 20s simulati per tick
+    private final double simEndSeconds  = 24 * 3600; // 24h in secondi
 
     public SimulationPublisherService(SimulationBridge simulationBridge) {
         this.simulationBridge = simulationBridge;
@@ -36,13 +36,13 @@ public class SimulationPublisherService {
         }
 
         // Pubblica snapshot con il tempo simulato
-        simulationBridge.publishSimulationSnapshot(simulationBridgeInterface, simTimeSeconds, firstSnapshot);
+        Boolean isStarted = simulationBridge.publishSimulationSnapshot(simulationBridgeInterface, simTimeSeconds, firstSnapshot);
+        if(isStarted){
+            // Incrementa il tempo simulato
+            simTimeSeconds += simStepSeconds;
+        }
+
         firstSnapshot = false;
-
-        // Incrementa il tempo simulato
-        simTimeSeconds += simStepSeconds;
-
-        // Optional: stoppa o resetta alla fine del giorno
         if (simTimeSeconds >= simEndSeconds) {
             simTimeSeconds = 0.0; firstSnapshot = true;
         }

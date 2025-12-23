@@ -1,4 +1,4 @@
-package org.matsim.CustomEvModule.model;
+package org.matsim.CustomEvModule.EVfleet;
 
 public record EvCsvEntry(
         String brand,

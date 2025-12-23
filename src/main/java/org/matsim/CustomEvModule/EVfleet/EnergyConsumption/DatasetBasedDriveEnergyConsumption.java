@@ -3,7 +3,7 @@ package org.matsim.CustomEvModule.EVfleet.EnergyConsumption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
-import org.matsim.CustomEvModule.model.EvModel;
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.fleet.ElectricVehicle;

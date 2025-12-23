@@ -4,7 +4,6 @@ import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.CustomEvModule.EVfleet.factory.EvVehicleFactory;
 import org.matsim.CustomEvModule.EVfleet.strategy.fleet.EvFleetStrategy;
 import org.matsim.CustomEvModule.EVfleet.strategy.plan.PlanGenerationStrategy;
-import org.matsim.CustomEvModule.model.EvModel;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.Scenario;
 import org.matsim.contrib.ev.fleet.ElectricFleet;

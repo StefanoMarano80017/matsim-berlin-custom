@@ -79,7 +79,7 @@ public class MatsimService {
                 .planStrategy(ConfigRun.PlanGenerationStrategyEnum.STATIC)
                 .sampleSizeStatic(0.001)
                 .stepSize(900.0)
-                .numeroVeicoli(1)
+                .numeroVeicoli(2)
                 .socMedio(0.70)
                 .socStdDev(0.05)
                 .targetSocMean(0.90)
