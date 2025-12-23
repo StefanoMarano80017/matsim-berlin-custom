@@ -1,0 +1,4 @@
+hubId, linkId    , nColonnine, type   , power
+hub_1, 4611774   ,          2, default,  22.0
+hub_2, 4372494   ,          3, default,  22.0
+hub_3, 16419109#0,          1, default,  11.0

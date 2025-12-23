@@ -38,6 +38,6 @@ public class EvConsumptionModelFactory implements DriveEnergyConsumption.Factory
         }
         // Restituisce l'istanza del tuo modello di consumo personalizzato.
         //return new DatasetBasedDriveEnergyConsumption(electricVehicle, this.evFleetManager);
-        return new TractiveDriveEnergyConsumption(electricVehicle, this.evFleetManager);
+        return new TractiveDriveEnergyConsumption(electricVehicle, evFleetManager);
     }
 }

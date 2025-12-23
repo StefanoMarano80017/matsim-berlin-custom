@@ -3,7 +3,6 @@ package org.matsim.CustomMonitor.EVfleet.EnergyConsumption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.matsim.CustomMonitor.EVfleet.EvFleetManager;
-import org.matsim.CustomMonitor.EVfleet.QuickLinkDebugHandler;
 import org.matsim.CustomMonitor.model.EvModel;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
@@ -63,7 +62,7 @@ public class DatasetBasedDriveEnergyConsumption implements DriveEnergyConsumptio
         // Aggiorna la distanza percorsa nel nostro EvModel per scopi di monitoraggio
         evData.addDistanceTraveled(distanceMeters);
         // MATSim si aspetta che il consumo sia espresso in un valore POSITIVO
-        log.info("Consumo Veicolo aggiornato");
+        log.debug("Consumo Veicolo aggiornato");
         return totalConsumptionJoules;
     }
 }

@@ -1,13 +1,20 @@
-# Build stage
-FROM maven:3.9.2-eclipse-temurin-21 as builder
+# Stage build
+FROM maven:3.8.8-eclipse-temurin-21-alpine AS build
 WORKDIR /app
+
+# Copio solo il pom per il caching delle dipendenze
 COPY pom.xml .
+
+# Ora copio il resto del progetto
 COPY src ./src
+
+# Compilo
 RUN mvn clean package -DskipTests
 
-# Run stage
-FROM eclipse-temurin:21-jdk-jammy
+# Stage runtime
+FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
-COPY --from=builder /app/target/matsim-berlin-6.4.jar app.jar
-EXPOSE 8080
+
+COPY --from=build /app/target/*.jar app.jar
+
 ENTRYPOINT ["java","-jar","app.jar"]

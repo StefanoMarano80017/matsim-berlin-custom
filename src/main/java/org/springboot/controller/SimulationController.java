@@ -1,14 +1,13 @@
 package org.springboot.controller;
 
+import org.springboot.SimulationBridge.SimulationBridge;
 import org.springboot.service.MatsimService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springboot.websocket.*;
 
 @Slf4j(topic = "org.springboot")
 @RestController
@@ -47,7 +46,7 @@ public class SimulationController {
     
     @PostMapping("/test")
     public ResponseEntity<String> test() {
-        simulationBridge.SimpleTextPublish("Test connessione");
+        //simulationBridge.publishWsSimpleText("Test connessione");
         return ResponseEntity.ok("Scenario MATSim avviato!");
     }
 }

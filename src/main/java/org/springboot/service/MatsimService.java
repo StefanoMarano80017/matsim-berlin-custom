@@ -4,30 +4,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.matsim.application.MATSimApplication;
+import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
+import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springboot.websocket.SimulationBridge;
+import org.springboot.SimulationBridge.SimulationPublisherService;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @Service
-@Slf4j(topic = "org.springboot")
 public class MatsimService {
 
-    private final SimulationBridge simulationBridge;
-    private final ApplicationContext applicationContext;
-    
+    private static final Logger log = LoggerFactory.getLogger(MatsimService.class);
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Future<?> currentFuture = null;
 
     @Autowired
-    public MatsimService(SimulationBridge simulationBridge, ApplicationContext applicationContext) {
-        this.simulationBridge = simulationBridge;
-        this.applicationContext = applicationContext;
-    }
+    private SimulationPublisherService simulationPublisherService;
 
     /**
      * Avvia il thread della simulazione.
@@ -43,15 +40,15 @@ public class MatsimService {
                 runScenario();
             } catch (Throwable t) {
                 log.warn("Simulazione interrotta: {}", t.getMessage());
+                t.printStackTrace();
             }
         });
 
-        simulationBridge.SimpleTextPublish("Simulazione Avviata");
+        //simulationBridge.publishWsSimpleText("Simulazione Avviata");
         return "Simulazione avviata.";
     }
 
     /**
-     *  NON è SAFE PER ORA
      * Tenta di arrestare la simulazione in esecuzione.
      * @return Stato del tentativo di arresto.
      */
@@ -70,16 +67,30 @@ public class MatsimService {
      */
     public void runScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
-        OpenBerlinScenario.setSpringContext(this.applicationContext);
-        String[] args = new String[] { 
-            "run", 
-            "--1pct" 
-        };
 
+        // Configurazione fluida tramite builder
+        ConfigRun configRun = ConfigRun.builder()
+                .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
+                .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
+                .configPath("input/v%s/berlin-v%s.config.xml")
+                .vehicleStrategy(ConfigRun.VehicleGenerationStrategyEnum.FROM_CSV)
+                .planStrategy(ConfigRun.PlanGenerationStrategyEnum.STATIC)
+                .sampleSizeStatic(0.001)
+                .stepSize(900.0)
+                .numeroVeicoli(1)
+                .socMedio(0.70)
+                .socStdDev(0.05)
+                .targetSocMean(0.90)
+                .targetSocStdDev(0.05)
+                .publishOnSpring(true)
+                .debug(true)
+                .build();
+
+        // Crea l'istanza di scenario con la configurazione
+        OpenBerlinScenario scenario = new OpenBerlinScenario().withConfigRun(configRun);
         log.info("Avvio simulazione MATSim...");
-        // MATSimApplication.run può lanciare una RuntimeException o una ExecutionException
-        // che verrà catturata nel blocco runThread.
-        MATSimApplication.run(OpenBerlinScenario.class, args);
+        SimulationBridgeInterface simulationBridgeInterface = scenario.RunScenario();
+        simulationPublisherService.setInterface(simulationBridgeInterface);
         log.info("Scenario MATSim completato!");
     }
 

@@ -18,19 +18,19 @@
 
     <Loggers>
         <!-- MATSim core log solo su file, livello WARN -->
-        <Logger name="org.matsim" level="NONE" additivity="false">
+        <Logger name="org.matsim" level="DEBUG" additivity="false">
             <AppenderRef ref="MatsimFile"/>
         </Logger>
 
-        <Logger name="org.matsim.application" level="NONE" additivity="false">
+        <Logger name="org.matsim.application" level="DEBUG" additivity="false">
             <AppenderRef ref="MatsimFile"/>
         </Logger>
 
-        <Logger name="org.matsim.core" level="NONE" additivity="false">
+        <Logger name="org.matsim.core" level="DEBUG" additivity="false">
             <AppenderRef ref="MatsimFile"/>
         </Logger>
 
-        <Logger name="com.ctc.wstx" level="NONE" additivity="false">
+        <Logger name="com.ctc.wstx" level="DEBUG" additivity="false">
             <AppenderRef ref="MatsimFile"/>
         </Logger>
 
