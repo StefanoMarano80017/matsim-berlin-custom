@@ -4,13 +4,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
-import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
-import org.matsim.run.OpenBerlinScenario;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springboot.SimulationBridge.SimulationPublisherService;
+
+import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationHandler;
+import org.matsim.run.OpenBerlinScenario;
+
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,10 +89,10 @@ public class MatsimService {
                 .build();
 
         // Crea l'istanza di scenario con la configurazione
-        OpenBerlinScenario scenario = new OpenBerlinScenario().withConfigRun(configRun);
+        SimulationHandler simulation = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
         log.info("Avvio simulazione MATSim...");
-        SimulationBridgeInterface simulationBridgeInterface = scenario.RunScenario();
-        simulationPublisherService.setInterface(simulationBridgeInterface);
+        simulationPublisherService.setInterface(simulation.getInterface());
+        simulation.run();
         log.info("Scenario MATSim completato!");
     }
 

@@ -1,8 +1,10 @@
 package org.matsim.run;
 
-import org.matsim.CustomMonitor.ConfigRun.ConfigRun;
-import org.matsim.CustomMonitor.ConfigRun.CustomModule;
-import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
+import java.util.List;
+
+/*
+*  Standard libs
+*/
 import org.matsim.analysis.QsimTimingModule;
 import org.matsim.analysis.personMoney.PersonMoneyEventsAnalysisModule;
 import org.matsim.api.core.v01.Scenario;
@@ -31,14 +33,26 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+/*
+*  Custom Libs
+*/
+import org.matsim.CustomEvModule.CustomEvContext;
+import org.matsim.CustomEvModule.CustomEvModule;
 
+import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationHandler;
+/*
+*  Guice 
+*/
 import com.google.inject.Key;
 import com.google.inject.name.Names;
-
+/*
+*  CLI
+*/
 import picocli.CommandLine;
 import playground.vsp.ev.UrbanEVConfigGroup;
 
-import java.util.List;
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
@@ -73,23 +87,44 @@ public class OpenBerlinScenario extends MATSimApplication {
 		MATSimApplication.run(OpenBerlinScenario.class, args);
 	}
 
-    public SimulationBridgeInterface RunScenario() {
+    public SimulationHandler SetupSimulation() {
         if (configRun == null) {
-            throw new IllegalStateException("ConfigRun non inizializzato. Usa il builder ConfigRun prima di runScenario.");
+            throw new IllegalStateException(
+                "ConfigRun non inizializzato. Usa il builder ConfigRun prima di prepareScenario."
+            );
         }
-        // --- 1. Carica Config dal file impostato nel ConfigRun ---
-        Config config = ConfigUtils.loadConfig(String.format(configRun.getConfigPath(), VERSION, VERSION));
-        // --- 2. Applica tutte le personalizzazioni di prepareConfig ---
+
+        // 1. Config
+        Config config = ConfigUtils.loadConfig(
+            String.format(configRun.getConfigPath(), VERSION, VERSION)
+        );
+
+        // 2. Custom config
         config = prepareConfig(config);
-        // --- 3. Crea lo Scenario dal Config ---
+
+        // 3. Scenario
         Scenario scenario = ScenarioUtils.loadScenario(config);
-        // --- 4. Prepara il CustomModule tramite ConfigRun ---
-        CustomModule customModule =  new CustomModule(scenario, configRun);
-        customModule.PrepareScenarioEV(scenario);
+        
+        CustomEvContext context  = new CustomEvContext(scenario, configRun);
+        CustomEvModule  module   = new CustomEvModule(
+                context.getHubManager(),
+                context.getEvFleetManager(),
+                context.getInfraSpec(),
+                configRun
+        );
+
+        // 5. Controller
         Controler controler = new Controler(scenario);
-        prepareControler(controler, customModule);
-        controler.run();
-        return new SimulationBridgeInterface(customModule.getHubManager(), customModule.getEvFleetManager());
+        prepareControler(controler);
+        controler.addOverridingModule(module);
+
+        // 6. Bridge (solo comunicazione)
+        SimulationBridgeInterface bridge = new SimulationBridgeInterface(
+            context.getHubManager(),
+            context.getEvFleetManager()
+        );
+
+        return new SimulationHandler(bridge, controler, scenario);
     }
 
 
@@ -176,9 +211,12 @@ public class OpenBerlinScenario extends MATSimApplication {
         return config;
     }
 
-    protected void prepareControler(Controler controler, CustomModule customModule) {
+    /*
+    * Standard No EV
+    */
+    @Override
+    protected void prepareControler(Controler controler) {
         controler.addOverridingModule(new EvModule());
-        controler.addOverridingModule(customModule);
         controler.addOverridingModule(new TravelTimeBinding());
         controler.addOverridingModule(new SimWrapperModule());
         controler.addOverridingModule(new QsimTimingModule());

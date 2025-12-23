@@ -1,6 +1,6 @@
 package org.springboot.SimulationBridge;
 
-import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 

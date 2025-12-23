@@ -3,7 +3,7 @@ package org.springboot.SimulationBridge;
 import org.springboot.DTO.WebSocketDTO.WebSocketUpdate;
 import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
 import org.springboot.websocket.SimulationWebSocketHandler;
-import org.matsim.CustomMonitor.SimulationInterface.SimulationBridgeInterface;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -45,8 +45,8 @@ public class SimulationBridge {
     ) {
         try {
             TimeStepPayload payload = simulationBridgeInterface.GetTimeStepStatus(fullSnapshot);
-            payload.setTimestamp(simTimestamp);
             if (payload != null) {
+                payload.setTimestamp(simTimestamp);
                 publishWebSocketUpdate("TimeStepUpdate", 0.0, payload);
                 // Reset dirty flags dopo invio delta
                 if (!fullSnapshot) {
