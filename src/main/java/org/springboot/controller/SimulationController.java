@@ -7,19 +7,18 @@ import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springboot.websocket.*;
-
 @Slf4j(topic = "org.springboot")
 @RestController
 @RequestMapping("/api/simulation")
 public class SimulationController {
 
-    private final SimulationBridge simulationBridge;
     private final MatsimService matsimService;
 
+    // endpoint veicoli e piani  
+    // modificare il DTO colonnine per contenere id veicolo 
+
     @Autowired
-    public SimulationController(SimulationBridge simulationBridge, MatsimService matsimService) {
-        this.simulationBridge = simulationBridge;
+    public SimulationController(MatsimService matsimService) {
         this.matsimService = matsimService;
     }
 
@@ -46,7 +45,7 @@ public class SimulationController {
     
     @PostMapping("/test")
     public ResponseEntity<String> test() {
-        simulationBridge.publishSimpleText("Test connessione");
+        //simulationBridge.publishWsSimpleText("Test connessione");
         return ResponseEntity.ok("Scenario MATSim avviato!");
     }
 }

@@ -1,7 +1,7 @@
 package org.springboot.websocket;
 
 import org.apache.poi.ss.formula.functions.T;
-import org.springboot.DTO.WebSocketUpdate;
+import org.springboot.DTO.WebSocketDTO.WebSocketUpdate;
 
 public interface SimulationEventPublisher {
     /**
