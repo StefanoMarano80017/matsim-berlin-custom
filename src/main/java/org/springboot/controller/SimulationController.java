@@ -1,6 +1,5 @@
 package org.springboot.controller;
 
-import org.springboot.SimulationBridge.SimulationBridge;
 import org.springboot.service.MatsimService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -8,18 +7,18 @@ import org.springframework.web.bind.annotation.*;
 
 import lombok.extern.slf4j.Slf4j;
 
-
 @Slf4j(topic = "org.springboot")
 @RestController
 @RequestMapping("/api/simulation")
 public class SimulationController {
 
-    private final SimulationBridge simulationBridge;
     private final MatsimService matsimService;
 
+    // endpoint veicoli e piani  
+    // modificare il DTO colonnine per contenere id veicolo 
+
     @Autowired
-    public SimulationController(SimulationBridge simulationBridge, MatsimService matsimService) {
-        this.simulationBridge = simulationBridge;
+    public SimulationController(MatsimService matsimService) {
         this.matsimService = matsimService;
     }
 

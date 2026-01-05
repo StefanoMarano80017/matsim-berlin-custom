@@ -13,10 +13,8 @@ import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationHandler;
 import org.matsim.run.OpenBerlinScenario;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 @Service
 public class MatsimService {
@@ -69,7 +67,6 @@ public class MatsimService {
      */
     public void runScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
-
         // Configurazione fluida tramite builder
         ConfigRun configRun = ConfigRun.builder()
                 .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))

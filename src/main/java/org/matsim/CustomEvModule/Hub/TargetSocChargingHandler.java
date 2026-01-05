@@ -1,8 +1,8 @@
 package org.matsim.CustomEvModule.Hub;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,6 +24,7 @@ import org.matsim.contrib.ev.fleet.ElectricVehicle;
 import org.matsim.contrib.ev.infrastructure.Charger;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructure;
 import org.matsim.core.events.MobsimScopeEventHandler;
+import org.matsim.core.gbl.MatsimRandom;
 import org.matsim.vehicles.Vehicle;
 
 import com.google.inject.Inject;
@@ -64,31 +65,41 @@ public class TargetSocChargingHandler
     @Override
     public void handleEvent(ActivityStartEvent e) {
         if (!e.getActType().endsWith("car charging")) return;
-
         Id<Link> eventLink = e.getLinkId();
         if(eventLink == null) return;
-        
         Id<Vehicle> vId     = lastVehicleUsed.get(e.getPersonId());
+        if (vId == null) return;
         ElectricVehicle ev  = electricFleet.getElectricVehicles().get(vId);
-        
-        Optional<Id<Charger>> optionalCharger = hubManager.getAvailableChargerForLink(
-                eventLink, ev.getChargerTypes()
-        );
+        if (ev == null) return;
 
-        if (optionalCharger.isEmpty()) {
-            log.info("[TargetSocChargingHandler] Nessun charger disponibile compatibile per veicolo " + vId);
+        double socTarget = readSocTarget(e.getPersonId());
+
+        List<Charger> compatibleChargers =
+            chargingInfrastructure.getChargers().values().stream()
+                .filter(c -> c.getLink().getId().equals(e.getLinkId()))
+                .filter(c -> ev.getChargerTypes().contains(
+                    c.getSpecification().getChargerType()
+                ))
+                .toList();
+
+        if (compatibleChargers.isEmpty()) {
+            log.info("[TargetSocChargingHandler] Veicolo {} Nessun charger compatibile sul link {}", vId, e.getLinkId());
             return;
         }
 
-        Id<Charger> chargerId   = optionalCharger.get();
-        Charger charger         = chargingInfrastructure.getChargers().get(chargerId);
-        double socTarget        = readSocTarget(e.getPersonId());
+        // Strategia: scegli charger (random)
+        Charger selected = compatibleChargers.get(
+            MatsimRandom.getRandom().nextInt(compatibleChargers.size())
+        );
 
-        ChargingStrategy strategy = new ChargeUpToMaxSocStrategy(charger.getSpecification(), ev, socTarget);
-        charger.getLogic().addVehicle(ev, strategy, e.getTime());
-        vehiclesAtChargers.put(ev.getId(), charger.getId());
+        ChargingStrategy strategy = new ChargeUpToMaxSocStrategy(
+            selected.getSpecification(),
+            ev,
+            socTarget
+        );
 
-        log.info("[TargetSocChargingHandler] Veicolo {} assegnato a charger {} (hub {})", vId, chargerId, hubManager.getHubIdForCharger(chargerId));
+        selected.getLogic().addVehicle(ev, strategy, e.getTime());
+        log.info("[TargetSocChargingHandler] Veicolo {} assegnato a charger {} (hub {})", vId, selected.getId(), hubManager.getHubIdForCharger(selected.getId()));
     }
 
     @Override

@@ -16,11 +16,11 @@ public class WebSocketUpdate<T> {
     @Schema(description = "Progresso simulazione")
     private double progress;
 
-    @Schema(description = "Payload personalizzabile")
-    private T payload; 
-
     @Schema(description = "Messaggio di stato opzionale")
     private String statusMessage;
+
+    @Schema(description = "Payload personalizzabile")
+    private T payload; 
 
     // Costruttore vuoto
     public WebSocketUpdate() {}

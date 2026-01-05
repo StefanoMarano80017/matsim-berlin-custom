@@ -26,22 +26,22 @@ public class StaticPlanGenerator implements PlanGenerationStrategy {
 
         Plan plan = factory.createPlan();
 
-        Link[] links = pickTwoRandomCarLinks(scenario);
-        Link homeLink = links[0];
-        Link workLink = links[1];
+        //Link[] links = pickTwoRandomCarLinks(scenario);
+        //Link homeLink = links[0];
+        //Link workLink = links[1];
 
-        //Id<Link> homeLink = Id.createLinkId("169704581#1");
-        //Id<Link> workLink = Id.createLinkId("831372993#0");
+        Id<Link> homeLink = Id.createLinkId("169704581#1");
+        Id<Link> workLink = Id.createLinkId("831372993#0");
         Id<Link> chargingLink = Id.createLinkId("4372494");
 
-        Activity home = factory.createActivityFromLinkId("home", homeLink.getId());
-        home.setEndTime(7 * 3600);
+        Activity home = factory.createActivityFromLinkId("home", homeLink);
+        home.setEndTime(0 * 3600);
         plan.addActivity(home);
 
         plan.addLeg(factory.createLeg("car"));
 
-        Activity work = factory.createActivityFromLinkId("work", workLink.getId());
-        work.setEndTime(8 * 3600); 
+        Activity work = factory.createActivityFromLinkId("work", workLink);
+        work.setMaximumDuration(8 * 3600);
         plan.addActivity(work);
 
         plan.addLeg(factory.createLeg("car"));
@@ -52,14 +52,13 @@ public class StaticPlanGenerator implements PlanGenerationStrategy {
 
         plan.addLeg(factory.createLeg("car"));
 
-        Activity home2 = factory.createActivityFromLinkId("home", homeLink.getId());
+        Activity home2 = factory.createActivityFromLinkId("home", homeLink);
         plan.addActivity(home2);
 
         p.addPlan(plan);
         scenario.getPopulation().addPerson(p);
     }
 
-    @SuppressWarnings("unused")
     private Link[] pickTwoRandomCarLinks(Scenario scenario) {
         Network network = scenario.getNetwork();
         List<Link> carLinks = network.getLinks()
