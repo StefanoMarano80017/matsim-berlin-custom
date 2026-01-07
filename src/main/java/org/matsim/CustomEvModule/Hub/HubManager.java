@@ -69,6 +69,10 @@ public class HubManager {
         return hubs.get(hubId);
     }
 
+    public Collection<ChargingHub> getChargingHubs() {
+        return hubs.values();
+    }
+
     public String getHubIdForCharger(Id<Charger> chargerId) {
         return charger2hub.get(chargerId);
     }

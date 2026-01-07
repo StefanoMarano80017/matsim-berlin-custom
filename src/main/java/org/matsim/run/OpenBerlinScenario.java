@@ -126,7 +126,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         
         controler.addControlerListener(bridge);
 
-        return new SimulationHandler(context.getEvModels(), bridge, controler, scenario);
+        return new SimulationHandler(context.getEvModels(), context.getChargingHubs(), bridge, controler, scenario);
     }
 
 

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
+import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.SimulationBridge.SimulationPublisherService;
 
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
@@ -118,4 +119,10 @@ public class MatsimService {
         return this.simulationHandler.getEvFleetDto();
     }
 
+    public HubListDTO getHubsInfo() {
+        if (this.simulationHandler == null) {
+            return null;
+        }
+        return this.simulationHandler.getHubListDTO();
+    }
 }

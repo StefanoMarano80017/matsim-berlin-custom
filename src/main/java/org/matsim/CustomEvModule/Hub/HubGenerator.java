@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -79,7 +80,9 @@ public class HubGenerator {
                             .build();
 
                     infraSpec.addChargerSpecification(chargerSpec);
-                    hub.addCharger(chargerId);
+                    // Aggiunta dei plug disponibili direttamente nel ChargingHub
+                    Set<String> plugs = Set.of(type); // puoi anche usare più tipi se vuoi
+                    hub.addCharger(chargerId, plugs);
                 }
 
                 hubs.put(hubId, hub);

@@ -14,15 +14,14 @@ public class ChargingHub {
 
     private final String hubId;
     private final Id<Link> linkId;
-
     private final Set<Id<Charger>> chargers = new HashSet<>();
 
     /**
      * Charger occupati -> EV che li sta occupando
      */
     private final Map<Id<Charger>, String> occupiedChargers = new HashMap<>();
-
     private final Map<Id<Charger>, Double> chargerEnergy = new HashMap<>();
+    private final Map<Id<Charger>, Set<String>> chargerPlugs = new HashMap<>();
 
     private double totalEnergy = 0.0;
     private boolean dirty = true;
@@ -81,6 +80,18 @@ public class ChargingHub {
         chargerEnergy.put(chargerId, chargerEnergy.getOrDefault(chargerId, 0.0) + energy);
         totalEnergy += energy;
     }
+
+    public synchronized void addCharger(Id<Charger> chargerId, Set<String> plugs) {
+        chargers.add(chargerId);
+        chargerEnergy.putIfAbsent(chargerId, 0.0);
+        chargerPlugs.put(chargerId, plugs);
+        dirty = true;
+    }
+
+    public synchronized Set<String> getPlugs(Id<Charger> chargerId) {
+        return chargerPlugs.getOrDefault(chargerId, Set.of());
+    }
+
 
     // -------------------- ACCESSOR METHODS --------------------
     public synchronized Set<Id<Charger>> getChargers() {

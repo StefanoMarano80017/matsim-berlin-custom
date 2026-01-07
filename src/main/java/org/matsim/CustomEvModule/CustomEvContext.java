@@ -11,6 +11,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
+import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
@@ -23,6 +24,7 @@ import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun.PlanGenerationStrategyEnum;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun.VehicleGenerationStrategyEnum;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -174,5 +176,9 @@ public final class CustomEvContext {
 
     public List<EvModel> getEvModels() {
         return evFleetManager.getEvModels();
+    }
+
+    public Collection<ChargingHub> getChargingHubs() {
+        return hubManager.getChargingHubs();
     }
 }
