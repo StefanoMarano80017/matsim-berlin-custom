@@ -7,6 +7,8 @@ import java.util.concurrent.Future;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springboot.DTO.SimulationDTO.EvFleetDto;
+import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.SimulationBridge.SimulationPublisherService;
 
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
@@ -25,6 +27,8 @@ public class MatsimService {
 
     @Autowired
     private SimulationPublisherService simulationPublisherService;
+    private volatile SimulationHandler simulationHandler; // riferimento alla simulazione in corso
+    private volatile boolean isReady = false;
 
     /**
      * Avvia il thread della simulazione.
@@ -41,11 +45,16 @@ public class MatsimService {
             } catch (Throwable t) {
                 log.warn("Simulazione interrotta: {}", t.getMessage());
                 t.printStackTrace();
+            } finally {
+                simulationHandler = null; // pulizia
             }
         });
 
-        //simulationBridge.publishWsSimpleText("Simulazione Avviata");
         return "Simulazione avviata.";
+    }
+
+    public boolean isSimulationRunning() {
+        return (currentFuture != null && !currentFuture.isDone());
     }
 
     /**
@@ -65,7 +74,7 @@ public class MatsimService {
      * Logica principale di esecuzione MATSim.
      * @throws Exception Se MATSimApplication fallisce.
      */
-    public void runScenario() throws Exception {
+    public void setupScenario() throws Exception {
         log.info("Preparazione scenario MATSim...");
         // Configurazione fluida tramite builder
         ConfigRun configRun = ConfigRun.builder()
@@ -86,11 +95,34 @@ public class MatsimService {
                 .build();
 
         // Crea l'istanza di scenario con la configurazione
-        SimulationHandler simulation = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
+        this.simulationHandler = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
+        this.isReady = true;
+    }
+
+    public void runScenario() throws Exception{
+        if(isReady) {
+            log.info("Scenario già pronto, avvio diretto...");
+        } else {
+            setupScenario();
+        }
+
         log.info("Avvio simulazione MATSim...");
-        simulationPublisherService.setInterface(simulation.getInterface());
-        simulation.run();
+        simulationPublisherService.setInterface(this.simulationHandler.getInterface());
+        this.simulationHandler.run();
         log.info("Scenario MATSim completato!");
     }
 
+    public EvFleetDto getVehiclesInfo() {
+        if (this.simulationHandler == null) {
+            return null;
+        }
+        return this.simulationHandler.getEvFleetDto();
+    }
+
+    public HubListDTO getHubsInfo() {
+        if (this.simulationHandler == null) {
+            return null;
+        }
+        return this.simulationHandler.getHubListDTO();
+    }
 }

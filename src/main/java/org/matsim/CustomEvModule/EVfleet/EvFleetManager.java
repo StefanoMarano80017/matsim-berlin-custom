@@ -111,6 +111,10 @@ public class EvFleetManager{
         return Collections.unmodifiableMap(fleet);
     }
 
+    public List<EvModel> getEvModels() {
+        return new ArrayList<>(fleet.values());
+    }
+
     public EvModel getVehicle(Id<Vehicle> vehicleId) {
         return fleet.get(vehicleId);
     }

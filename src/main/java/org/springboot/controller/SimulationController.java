@@ -1,10 +1,16 @@
 package org.springboot.controller;
 
+import org.springboot.DTO.SimulationDTO.EvFleetDto;
+import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.service.MatsimService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j(topic = "org.springboot")
@@ -14,15 +20,17 @@ public class SimulationController {
 
     private final MatsimService matsimService;
 
-    // endpoint veicoli e piani  
-    // modificare il DTO colonnine per contenere id veicolo 
-
     @Autowired
     public SimulationController(MatsimService matsimService) {
         this.matsimService = matsimService;
     }
 
     // --- Endpoint di Avvio ---
+    @Operation(summary = "Esegue la simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Simulazione avviata con successo"),
+            @ApiResponse(responseCode = "409", description = "Simulazione già in esecuzione"),
+    })
     @PostMapping("/run")
     public ResponseEntity<String> runScenario() {
         // Chiama il Service e usa la stringa di stato come risposta HTTP
@@ -34,6 +42,11 @@ public class SimulationController {
     }
 
     // --- Endpoint di Arresto ---
+    @Operation(summary = "Arresta la simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Richiesta di shutdown inviata con successo, operazione asincrona"),
+            @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
+    })
     @PostMapping("/shutdown")
     public ResponseEntity<String> shutdownScenario() {
         String status = matsimService.shutdownThread();
@@ -43,9 +56,47 @@ public class SimulationController {
         return ResponseEntity.ok(status);
     }
     
-    @PostMapping("/test")
-    public ResponseEntity<String> test() {
-        //simulationBridge.publishWsSimpleText("Test connessione");
-        return ResponseEntity.ok("Scenario MATSim avviato!");
+    // --- Endpoint espone Veicoli della simulazione ----
+    @Operation(summary = "Restituisce lo configurazione dei veicoli della simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flotta di veicoli disponibile"),
+            @ApiResponse(responseCode = "409", description = "Simulazione non avviata"),
+            @ApiResponse(responseCode = "500", description = "Dati dei veicoli ancora non disponibili")
+    })
+    @GetMapping("/fleet")
+    public ResponseEntity<EvFleetDto> getVehicles() {
+        if (!matsimService.isSimulationRunning()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
+
+        EvFleetDto fleetDto = matsimService.getVehiclesInfo();
+        if (fleetDto == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
+        return ResponseEntity.ok(fleetDto);
     }
+
+    //--- Endpoint espone hub della simulazione ----
+    @Operation(summary = "Restituisce lo configurazione degli hub della simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista hub disponibile"),
+            @ApiResponse(responseCode = "409", description = "Simulazione non avviata"),
+            @ApiResponse(responseCode = "500", description = "Dati hub non ancora disponibili")
+    })
+    @GetMapping("/hubs")
+    public ResponseEntity<HubListDTO> getHubs() {
+        if (!matsimService.isSimulationRunning()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
+
+        HubListDTO hubListDTO = matsimService.getHubsInfo();
+        if (hubListDTO == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
+        return ResponseEntity.ok(hubListDTO);
+    }
+
+
 }

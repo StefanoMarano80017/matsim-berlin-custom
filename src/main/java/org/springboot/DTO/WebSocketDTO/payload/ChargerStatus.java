@@ -1,6 +1,7 @@
 package org.springboot.DTO.WebSocketDTO.payload;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 
 @Schema(description = "Stato di un singolo charger in un hub")
 public class ChargerStatus {
@@ -9,13 +10,17 @@ public class ChargerStatus {
     private boolean occupied;
     private double energy;
 
+    @Schema(description = "ID del veicolo elettrico collegato (obbligatorio se occupied=true)")
+    private String evId;
+
     public ChargerStatus() {
     }
 
-    public ChargerStatus(String chargerId, boolean occupied, double energy) {
+    public ChargerStatus(String chargerId, boolean occupied, double energy, String evId) {
         this.chargerId = chargerId;
         this.occupied = occupied;
         this.energy = energy;
+        this.evId = evId;
     }
 
     public String getChargerId() {
@@ -42,12 +47,32 @@ public class ChargerStatus {
         this.energy = energy;
     }
 
+    public String getEvId() {
+        return evId;
+    }
+
+    public void setEvId(String evId) {
+        this.evId = evId;
+    }
+
+    /**
+     * Se occupied è true, evId deve essere valorizzato
+     */
+    @AssertTrue(message = "evId è obbligatorio quando il charger è occupato")
+    public boolean isEvIdValidWhenOccupied() {
+        if (!occupied) {
+            return true;
+        }
+        return evId != null && !evId.trim().isEmpty();
+    }
+
     @Override
     public String toString() {
         return "ChargerStatus{" +
                 "chargerId='" + chargerId + '\'' +
                 ", occupied=" + occupied +
                 ", energy=" + energy +
+                ", evId='" + evId + '\'' +
                 '}';
     }
 }

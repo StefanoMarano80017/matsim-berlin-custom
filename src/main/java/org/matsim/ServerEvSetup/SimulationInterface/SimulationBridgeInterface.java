@@ -53,11 +53,22 @@ public class SimulationBridgeInterface implements IterationStartsListener {
                 .filter(hub -> fullSnapshot || hub.isDirty())
                 .map(hub -> {
                     Map<String, ChargerStatus> chargerStates = new HashMap<>();
+                    
                     hub.getChargers().forEach(chId -> {
-                        boolean occupied = hub.getOccupiedChargers().contains(chId);
-                        double energy = hub.getChargerEnergy(chId); 
-                        chargerStates.put(chId.toString(), new ChargerStatus(chId.toString(), occupied, energy));
+                        var evId = hub.getEvOccupyingCharger(chId);
+                        boolean occupied = evId != null;
+
+                        chargerStates.put(
+                            chId.toString(),
+                            new ChargerStatus(
+                                chId.toString(),
+                                occupied,
+                                hub.getChargerEnergy(chId),
+                                occupied ? evId.toString() : null
+                            )
+                        );
                     });
+                    
                     return new HubStatusPayload(
                             hub.getId(),
                             hub.getTotalEnergy(),

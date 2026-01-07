@@ -4,6 +4,7 @@ import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.Charger;
+import org.matsim.contrib.ev.infrastructure.ChargingInfrastructure;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.springframework.core.io.Resource;
 
@@ -32,22 +33,18 @@ public class HubManager {
     }
 
     /**
-     * Restituisce un charger libero e compatibile con i tipi richiesti su uno specifico link.
+     * Restituisce una lista di charger libero e compatibile con i tipi richiesti su uno specifico link.
      * @param linkId link su cui cercare charger
      * @param compatibleTypes tipi di charger compatibili con il veicolo
      * @return Optional<Id<Charger>> disponibile
      */
-    public Optional<Id<Charger>> getAvailableChargerForLink(Id<Link> linkId, ImmutableList<String> compatibleTypes) {
-        return hubs.values().stream().
-                filter(hub -> linkId.equals(hub.getLink()))              // hub sul link specifico
-                .flatMap(hub -> hub.getChargers().stream()
-                                    .filter(chId -> !hub.getOccupiedChargers().contains(chId)) // solo liberi
-                                    .filter(chId -> {
-                                        String type = infraSpec.getChargerSpecifications().get(chId).getChargerType();
-                                        return compatibleTypes.contains(type);
-                                    })
-                )
-                .findFirst(); // restituisce il primo charger libero compatibile
+    public List<Charger> getAvailableChargerForLink(Id<Link> linkId, ImmutableList<String> compatibleTypes, ChargingInfrastructure chargingInfrastructure) {
+        return chargingInfrastructure.getChargers().values().stream()
+                .filter(c -> c.getLink().getId().equals(linkId))
+                .filter(c -> compatibleTypes.contains(
+                    c.getSpecification().getChargerType()
+                ))
+                .toList();
     }
 
     public void createHub(Resource csvFile) {
@@ -72,13 +69,17 @@ public class HubManager {
         return hubs.get(hubId);
     }
 
+    public Collection<ChargingHub> getChargingHubs() {
+        return hubs.values();
+    }
+
     public String getHubIdForCharger(Id<Charger> chargerId) {
         return charger2hub.get(chargerId);
     }
 
-    public void incrementOccupancy(Id<Charger> chargerId, double energy) {
+    public void incrementOccupancy(Id<Charger> chargerId, String evId, double energy) {
         ChargingHub hub = getHub(getHubIdForCharger(chargerId));
-        hub.incrementOccupancy(chargerId, energy);
+        hub.incrementOccupancy(chargerId, evId, energy);
     }
 
     public void decrementOccupancy(Id<Charger> chargerId, double energy) {
