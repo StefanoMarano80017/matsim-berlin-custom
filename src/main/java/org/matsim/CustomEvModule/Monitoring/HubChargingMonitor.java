@@ -24,7 +24,7 @@ public class HubChargingMonitor implements ChargingStartEventHandler, ChargingEn
     @Override
     public void handleEvent(ChargingStartEvent event) {
         ChargingHub hub = hubManager.getHub(hubManager.getHubIdForCharger(event.getChargerId()));
-        hub.incrementOccupancy(event.getChargerId(), 0.0); // energia a start=0
+        hub.incrementOccupancy(event.getChargerId(), event.getVehicleId().toString(), 0.0); // energia a start=0
         logEvent("START", event.getVehicleId().toString(), event.getChargerId().toString(), hub, event.getTime(), 0.0);
     }
 

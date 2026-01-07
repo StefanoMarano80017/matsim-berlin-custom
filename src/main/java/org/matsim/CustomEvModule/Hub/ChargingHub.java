@@ -14,15 +14,21 @@ public class ChargingHub {
 
     private final String hubId;
     private final Id<Link> linkId;
+
     private final Set<Id<Charger>> chargers = new HashSet<>();
-    private final Set<Id<Charger>> occupiedChargers = new HashSet<>();
+
+    /**
+     * Charger occupati -> EV che li sta occupando
+     */
+    private final Map<Id<Charger>, String> occupiedChargers = new HashMap<>();
+
     private final Map<Id<Charger>, Double> chargerEnergy = new HashMap<>();
 
     private double totalEnergy = 0.0;
     private boolean dirty = true;
 
     public ChargingHub(String hubId, Id<Link> linkId) {
-        this.hubId  = hubId;
+        this.hubId = hubId;
         this.linkId = linkId;
     }
 
@@ -31,6 +37,7 @@ public class ChargingHub {
     }
 
     // -------------------- MUTATOR METHODS --------------------
+
     public synchronized void addCharger(Id<Charger> chargerId) {
         chargers.add(chargerId);
         chargerEnergy.putIfAbsent(chargerId, 0.0);
@@ -44,15 +51,26 @@ public class ChargingHub {
         dirty = true;
     }
 
-    public synchronized void incrementOccupancy(Id<Charger> chargerId, double energy) {
+    /**
+     * Segna un charger come occupato da un EV
+     */
+    public synchronized void incrementOccupancy(Id<Charger> chargerId, String evId, double energy) {
         if (!chargers.contains(chargerId)) {
             throw new IllegalArgumentException("Charger non appartiene all'hub: " + chargerId);
         }
-        occupiedChargers.add(chargerId);
+
+        if (occupiedChargers.containsKey(chargerId)) {
+            throw new IllegalStateException("Charger già occupato: " + chargerId);
+        }
+
+        occupiedChargers.put(chargerId, evId);
         addChargerEnergy(chargerId, energy);
         dirty = true;
     }
 
+    /**
+     * Libera un charger
+     */
     public synchronized void decrementOccupancy(Id<Charger> chargerId, double energy) {
         occupiedChargers.remove(chargerId);
         addChargerEnergy(chargerId, energy);
@@ -69,8 +87,18 @@ public class ChargingHub {
         return Collections.unmodifiableSet(new HashSet<>(chargers));
     }
 
+    /**
+     * Charger occupati
+     */
     public synchronized Set<Id<Charger>> getOccupiedChargers() {
-        return Collections.unmodifiableSet(new HashSet<>(occupiedChargers));
+        return Collections.unmodifiableSet(new HashSet<>(occupiedChargers.keySet()));
+    }
+
+    /**
+     * Mappa completa charger -> evId
+     */
+    public synchronized Map<Id<Charger>, String> getOccupiedChargersWithEv() {
+        return Collections.unmodifiableMap(new HashMap<>(occupiedChargers));
     }
 
     public synchronized int getOccupancy() {
@@ -89,11 +117,19 @@ public class ChargingHub {
         return chargerEnergy.getOrDefault(chargerId, 0.0);
     }
 
-    public synchronized Id<Link> getLink(){
+    public synchronized Id<Link> getLink() {
         return this.linkId;
     }
 
+    /**
+     * Restituisce l'EV che occupa un charger (null se libero)
+     */
+    public synchronized String getEvOccupyingCharger(Id<Charger> chargerId) {
+        return occupiedChargers.get(chargerId);
+    }
+
     // -------------------- Dirty flag --------------------
+
     public synchronized boolean isDirty() {
         return dirty;
     }

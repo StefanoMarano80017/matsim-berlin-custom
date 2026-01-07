@@ -1,5 +1,6 @@
 package org.springboot.controller;
 
+import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.service.MatsimService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,6 @@ public class SimulationController {
 
     private final MatsimService matsimService;
 
-    // endpoint veicoli e piani  
     // modificare il DTO colonnine per contenere id veicolo 
 
     @Autowired
@@ -43,9 +43,19 @@ public class SimulationController {
         return ResponseEntity.ok(status);
     }
     
-    @PostMapping("/test")
-    public ResponseEntity<String> test() {
-        //simulationBridge.publishWsSimpleText("Test connessione");
-        return ResponseEntity.ok("Scenario MATSim avviato!");
+    //--- Endpoint espone Veicoli della simulazione ----
+    @GetMapping("/fleet")
+    public ResponseEntity<EvFleetDto> getVehicles() {
+        if (!matsimService.isSimulationRunning()) {
+            return ResponseEntity.status(409).body(null);
+        }
+
+        EvFleetDto fleetDto = matsimService.getVehiclesInfo();
+        if (fleetDto == null) {
+            return ResponseEntity.status(500).body(null);
+        }
+
+        return ResponseEntity.ok(fleetDto);
     }
+
 }
