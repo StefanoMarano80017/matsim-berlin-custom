@@ -4,6 +4,9 @@ import org.springframework.core.io.Resource;
 
 public class ConfigRun {
 
+    /*
+    * Alcune strategie non sono implementate ma per ora sono placeholder 
+    */
     public enum VehicleGenerationStrategyEnum {
         UNIFORM,
         NORMAL,
@@ -34,7 +37,6 @@ public class ConfigRun {
     private final Double sampleSizeStatic;
     private final Double stepSize;
     private final String configPath;
-    private final boolean publishOnSpring;
     private final boolean debug;
 
     /* =======================
@@ -59,7 +61,6 @@ public class ConfigRun {
         this.sampleSizeStatic = builder.sampleSizeStatic;
         this.stepSize = builder.stepSize;
         this.configPath = builder.configPath;
-        this.publishOnSpring = builder.publishOnSpring;
         this.debug = builder.debug;
 
         this.numeroVeicoli = builder.numeroVeicoli;
@@ -129,10 +130,6 @@ public class ConfigRun {
         return configPath;
     }
 
-    public boolean isPublishOnSpring() {
-        return publishOnSpring;
-    }
-
     public boolean isDebug() {
         return debug;
     }
@@ -146,7 +143,6 @@ public class ConfigRun {
         private Resource csvResourceHub;
         private Resource csvResourceEv;
         private String configPath;
-        private boolean publishOnSpring = false;
         private boolean debug = false;
         private Double sampleSizeStatic;
         private Double stepSize;
@@ -173,11 +169,6 @@ public class ConfigRun {
 
         public Builder configPath(String configPath) {
             this.configPath = configPath;
-            return this;
-        }
-
-        public Builder publishOnSpring(boolean publishOnSpring) {
-            this.publishOnSpring = publishOnSpring;
             return this;
         }
 

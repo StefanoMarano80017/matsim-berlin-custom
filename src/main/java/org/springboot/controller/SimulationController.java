@@ -2,6 +2,7 @@ package org.springboot.controller;
 
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
+import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.service.MatsimService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j(topic = "org.springboot")
@@ -26,15 +28,17 @@ public class SimulationController {
     }
 
     // --- Endpoint di Avvio ---
-    @Operation(summary = "Esegue la simulazione")
+    @Operation(summary = "Esegue la simulazione con parametri opzionali")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Simulazione avviata con successo"),
             @ApiResponse(responseCode = "409", description = "Simulazione già in esecuzione"),
     })
     @PostMapping("/run")
-    public ResponseEntity<String> runScenario() {
+    public ResponseEntity<String> runScenario(@Valid @RequestBody(required = false) SimulationSettingsDTO settings) {
+        // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
+        SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
         // Chiama il Service e usa la stringa di stato come risposta HTTP
-        String status = matsimService.runThread();    
+        String status = matsimService.runThread(finalSettings);    
         if (status.contains("già in esecuzione")) {
             return ResponseEntity.status(409).body(status); // 409 Conflict
         }
@@ -97,6 +101,5 @@ public class SimulationController {
 
         return ResponseEntity.ok(hubListDTO);
     }
-
 
 }
