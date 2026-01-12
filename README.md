@@ -6,27 +6,10 @@
 
 Questo progetto è un **fork** del [MATSim Open Berlin Scenario](https://github.com/matsim-scenarios/matsim-berlin). Integra un server **Spring Boot** per trasformare la simulazione in un servizio interattivo, permettendo di gestire e monitorare lo scenario di Berlino tramite endpoint REST.
 
-
-
----
-
 ## 🚀 Caratteristiche del Fork
-
-L'integrazione con Spring Boot permette di superare l'utilizzo della sola GUI o riga di comando, abilitando:
 * **Controllo Remoto**: Avvio, pausa e arresto della simulazione tramite API.
-* **Real-time Updates**: Ricezione di aggiornamenti sullo stato della simulazione e statistiche di iterazione.
-* **Flessibilità**: Configurazione dinamica dei parametri di simulazione tramite JSON.
-
-### Endpoint API Principali (Esempi)
-
-| Metodo | Endpoint | Descrizione |
-| :--- | :--- | :--- |
-| `POST` | `/api/simulation/start` | Avvia la simulazione MATSim. |
-| `GET` | `/api/simulation/status` | Restituisce lo stato attuale (ITERATION, RUNNING, STOPPED). |
-| `GET` | `/api/simulation/results` | Recupera i dati sintetici dell'ultima iterazione completata. |
-| `POST` | `/api/simulation/config` | Aggiorna i parametri di configurazione prima del run. |
-
----
+* **Real-time Updates**: Ricezione di aggiornamenti sullo stato della simulazione e statistiche di iterazione tramite websocket.
+* **Flessibilità**: Configurazione dinamica dei parametri di simulazione.
 
 ## 🛠 Setup e Installazione
 
