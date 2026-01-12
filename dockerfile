@@ -1,20 +1,37 @@
-# Stage build
-FROM maven:3.8.8-eclipse-temurin-21-alpine AS build
-WORKDIR /app
+# =========================
+# 1) BUILD STAGE
+# =========================
+FROM maven:3.9.9-eclipse-temurin-21 AS build
 
-# Copio solo il pom per il caching delle dipendenze
+WORKDIR /build
+
+# Copia solo il POM (cache dipendenze)
 COPY pom.xml .
 
-# Ora copio il resto del progetto
+# PROFILO DOCKER ATTIVO QUI
+RUN mvn -B -Pdocker -DskipTests dependency:go-offline
+
+# Copia il resto del progetto
 COPY src ./src
 
-# Compilo
-RUN mvn clean package -DskipTests
+# Build finale
+RUN mvn -B -Pdocker package
 
-# Stage runtime
-FROM eclipse-temurin:21-jdk-alpine
+# =========================
+# 2) RUNTIME STAGE
+# =========================
+FROM eclipse-temurin:21-jre
+
 WORKDIR /app
 
-COPY --from=build /app/target/*.jar app.jar
+# Copia il jar shaded prodotto
+COPY --from=build /build/target/*.jar app.jar
+COPY ./input ./input
 
-ENTRYPOINT ["java","-jar","app.jar"]
+# MATSim ama la RAM → meglio dichiararla
+ENV JAVA_OPTS="-Xms2g -Xmx8g -Djava.awt.headless=true"
+
+# Se usi Spring Boot REST
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

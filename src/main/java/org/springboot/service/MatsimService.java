@@ -9,6 +9,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
+import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.SimulationBridge.SimulationPublisherService;
 
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
@@ -34,14 +35,14 @@ public class MatsimService {
      * Avvia il thread della simulazione.
      * @return Stato dell'avvio (successo o già in esecuzione).
      */
-    public String runThread(){
+    public String runThread(SimulationSettingsDTO settings){
         if (currentFuture != null && !currentFuture.isDone()) {
             return "Simulazione già in esecuzione.";
         }
 
         currentFuture = executor.submit(() -> {
             try {
-                runScenario();
+                runScenario(settings);
             } catch (Throwable t) {
                 log.warn("Simulazione interrotta: {}", t.getMessage());
                 t.printStackTrace();
@@ -90,7 +91,6 @@ public class MatsimService {
                 .socStdDev(0.05)
                 .targetSocMean(0.90)
                 .targetSocStdDev(0.05)
-                .publishOnSpring(true)
                 .debug(true)
                 .build();
 
@@ -99,11 +99,34 @@ public class MatsimService {
         this.isReady = true;
     }
 
-    public void runScenario() throws Exception{
+    public void setupScenario(SimulationSettingsDTO s) throws Exception {
+        log.info("Preparazione scenario MATSim con parametri custom...");
+        
+        ConfigRun configRun = ConfigRun.builder()
+                .csvResourceHub(new ClassPathResource(s.getCsvResourceHub()))
+                .csvResourceEv(new ClassPathResource(s.getCsvResourceEv()))
+                .configPath(s.getConfigPath())
+                .vehicleStrategy(s.getVehicleStrategy())
+                .planStrategy(s.getPlanStrategy())
+                .sampleSizeStatic(s.getSampleSizeStatic())
+                .stepSize(s.getStepSize())
+                .numeroVeicoli(s.getNumeroVeicoli())
+                .socMedio(s.getSocMedio())
+                .socStdDev(s.getSocStdDev())
+                .targetSocMean(s.getTargetSocMean())
+                .targetSocStdDev(s.getTargetSocStdDev())
+                .debug(s.getDebug())
+                .build();
+
+        this.simulationHandler = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
+        this.isReady = true;
+    }
+
+    public void runScenario(SimulationSettingsDTO settings) throws Exception{
         if(isReady) {
             log.info("Scenario già pronto, avvio diretto...");
         } else {
-            setupScenario();
+            setupScenario(settings);
         }
 
         log.info("Avvio simulazione MATSim...");

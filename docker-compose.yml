@@ -1,0 +1,11 @@
+services:
+  matsim:
+    image: matsim-berlin:6.4
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 12g
+    volumes:
+      - ./data:/data

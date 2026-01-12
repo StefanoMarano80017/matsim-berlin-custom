@@ -9,6 +9,7 @@ import org.springframework.core.io.Resource;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -17,15 +18,16 @@ import java.util.stream.Collectors;
 
 public class CsvFleetGenerationStrategy implements EvFleetStrategy {
 
-    private static final int SEED = 42;
-    private static final Random rng = new Random();
+    //private static final int SEED = 42;
+    private static final Random rng = new Random(new SecureRandom().nextLong());
+    //private static final Random rng = new Random();
     private static List<EvCsvEntry> evDataset = new ArrayList<>();
 
     @Override
     public List<EvModel> generateFleet(Resource csvResource, int count, double socMean, double socStdDev) {
         try {
             loadCsv(csvResource);
-            setSeed(SEED);
+            //setSeed(SEED);
             return generateEvModels(count, socMean, socStdDev);
         } catch (Exception e) {
             throw new RuntimeException("Errore generazione EV da CSV", e);

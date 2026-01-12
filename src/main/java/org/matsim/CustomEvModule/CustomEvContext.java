@@ -11,6 +11,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
+import org.springframework.core.io.Resource;
 import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
@@ -42,7 +43,7 @@ public final class CustomEvContext {
 
     public CustomEvContext(Scenario scenario, ConfigRun config) {
         this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
-        this.hubManager     = initializeHubManager(scenario, config, infraSpec);
+        this.hubManager     = initializeHubManager(scenario, config.getCsvResourceHub(), infraSpec);
         this.evFleetManager = initializeEvFleetManager(scenario, config);
 
         registerDefaultVehicles(
@@ -53,14 +54,16 @@ public final class CustomEvContext {
 
         log.info("{CustomEvContext} Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
     }
+    
     /*
     *  Inizializzazione Hub Manager 
     */
-    private HubManager initializeHubManager(Scenario scenario, ConfigRun config, ChargingInfrastructureSpecification infraSpec) {
+    private HubManager initializeHubManager(Scenario scenario, Resource csv, ChargingInfrastructureSpecification infraSpec) {
         HubManager Manager = new HubManager(scenario.getNetwork(), infraSpec);
-        Manager.createHub(config.getCsvResourceHub());
+        Manager.createHub(csv);
         return Manager;
     }
+
     /*
     *   Inizializzazione EvFleetManager
     */
