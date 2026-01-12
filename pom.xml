@@ -35,6 +35,15 @@
 
 	</properties>
 
+	<developers>
+        <developer>
+            <id>StefanoMarano80017</id>
+            <name>Stefano Marano</name>
+			<url> https://github.com/StefanoMarano80017 </url>
+        </developer>
+    </developers>
+
+
 	<!-- Gestione versioni Spring Boot senza cambiare parent -->
     <dependencyManagement>
         <dependencies>
