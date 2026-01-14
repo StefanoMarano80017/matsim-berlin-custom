@@ -60,6 +60,19 @@ public class SimulationBridge {
         return false;
     }
 
+    /**
+     * Invia un messaggio generico alla simulazione tramite WebSocket.
+     * Utile per eventi come inizio/fine simulazione.
+     *
+     * @param message il testo del messaggio da inviare
+     */
+    public void publishSimulationMessage(String message) {
+        if (message == null || message.isBlank()) {
+            return; // ignora messaggi vuoti
+        }
+        publishWebSocketUpdate("SimulationMessage", 0.0, message);
+    }
+
     // --- LOW-LEVEL WS ---
     private <T> void publishWebSocketUpdate(String type, Double progress, T payload) {
         WebSocketUpdate<T> update = new WebSocketUpdate<>(type, progress, payload, "success");

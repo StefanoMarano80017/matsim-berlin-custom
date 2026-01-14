@@ -42,7 +42,10 @@ public class SimulationSettingsDTO {
 
     @PositiveOrZero
     private Double targetSocStdDev = 0.05;
-
-    private Boolean publishOnSpring = true;
     private Boolean debug = false;
+
+    //Setup publisher
+    @Positive(message = "Il rate del publisher deve essere maggiore di zero")
+    private Long publisherRateMs = 5000L; // default 5s
+    private boolean publisherDirty = false; // default snapshot full
 }

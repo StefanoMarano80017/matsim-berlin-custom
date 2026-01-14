@@ -38,7 +38,7 @@ public class SimulationController {
         // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
         SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
         // Chiama il Service e usa la stringa di stato come risposta HTTP
-        String status = matsimService.runThread(finalSettings);    
+        String status = matsimService.runSimulationAsync(finalSettings);    
         if (status.contains("già in esecuzione")) {
             return ResponseEntity.status(409).body(status); // 409 Conflict
         }
@@ -53,7 +53,7 @@ public class SimulationController {
     })
     @PostMapping("/shutdown")
     public ResponseEntity<String> shutdownScenario() {
-        String status = matsimService.shutdownThread();
+        String status = matsimService.stopSimulation();
         if (status.contains("Tentativo di interruzione fallito")) {
             return ResponseEntity.status(503).body(status); // 503 Service Unavailable
         }

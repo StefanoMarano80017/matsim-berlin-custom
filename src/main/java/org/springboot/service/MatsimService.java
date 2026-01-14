@@ -23,61 +23,119 @@ import org.slf4j.LoggerFactory;
 public class MatsimService {
 
     private static final Logger log = LoggerFactory.getLogger(MatsimService.class);
+
+    // ======= Threading & Async =======
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Future<?> currentFuture = null;
 
+    // ======= Dependencies =======
     @Autowired
     private SimulationPublisherService simulationPublisherService;
-    private volatile SimulationHandler simulationHandler; // riferimento alla simulazione in corso
+
+    // ======= Simulation state =======
+    private volatile SimulationHandler simulationHandler;
     private volatile boolean isReady = false;
 
+    // ===============================
+    // ======= Public API ============
+    // ===============================
+
     /**
-     * Avvia il thread della simulazione.
-     * @return Stato dell'avvio (successo o già in esecuzione).
+     * Avvia la simulazione in background.
      */
-    public String runThread(SimulationSettingsDTO settings){
-        if (currentFuture != null && !currentFuture.isDone()) {
+    public synchronized String runSimulationAsync(SimulationSettingsDTO settings) {
+        if (isSimulationRunning()) {
             return "Simulazione già in esecuzione.";
         }
 
         currentFuture = executor.submit(() -> {
             try {
-                runScenario(settings);
+                runSimulation(settings);
             } catch (Throwable t) {
-                log.warn("Simulazione interrotta: {}", t.getMessage());
-                t.printStackTrace();
+                log.warn("Simulazione interrotta: {}", t.getMessage(), t);
             } finally {
-                simulationHandler = null; // pulizia
+                simulationHandler = null;
+                isReady = false;
             }
         });
 
         return "Simulazione avviata.";
     }
 
+    /**
+     * Verifica se la simulazione è attiva.
+     */
     public boolean isSimulationRunning() {
-        return (currentFuture != null && !currentFuture.isDone());
+        return currentFuture != null && !currentFuture.isDone();
     }
 
     /**
-     * Tenta di arrestare la simulazione in esecuzione.
-     * @return Stato del tentativo di arresto.
+     * Richiesta di interruzione della simulazione.
      */
-    public String shutdownThread(){
-        if (currentFuture == null || currentFuture.isDone()) {
+    public synchronized String stopSimulation() {
+        if (!isSimulationRunning()) {
             return "Nessuna simulazione attiva.";
         }
 
-        currentFuture.cancel(true); // tenta di interrompere
+        currentFuture.cancel(true);
         return "Richiesta di interruzione inviata.";
     }
 
     /**
-     * Logica principale di esecuzione MATSim.
-     * @throws Exception Se MATSimApplication fallisce.
+     * Recupera informazioni sulla flotta EV.
+     */
+    public EvFleetDto getVehiclesInfo() {
+        return simulationHandler != null ? simulationHandler.getEvFleetDto() : null;
+    }
+
+    /**
+     * Recupera informazioni sugli hub.
+     */
+    public HubListDTO getHubsInfo() {
+        return simulationHandler != null ? simulationHandler.getHubListDTO() : null;
+    }
+
+    // ===============================
+    // ======= Simulation Lifecycle ==
+    // ===============================
+    private void runSimulation(SimulationSettingsDTO settings) throws Exception {
+        if (!isReady) {
+            setupScenario(settings);
+        } else {
+            log.info("Scenario già pronto, avvio diretto...");
+        }
+
+        log.info("Avvio simulazione MATSim...");
+
+        // --- Notifica inizio simulazione ---
+        simulationPublisherService.sendSimulationMessage("SIMULATION_START");
+
+        // --- Avvio publisher ---
+        simulationPublisherService.startPublisher(
+                simulationHandler.getInterface(),
+                false, // dirty snapshot = false = full snapshot
+                5000   // frequenza in ms
+        );
+
+        // --- Avvio simulazione ---
+        simulationHandler.run();
+
+        log.info("Scenario MATSim completato!");
+
+        // --- Notifica fine simulazione ---
+        simulationPublisherService.sendSimulationMessage("SIMULATION_END");
+    }
+
+    // ===============================
+    // ======= Scenario Setup ========
+    // ===============================
+
+    /**
+     * Setup scenario MATSim di default (demo/test).
      */
     public void setupScenario() throws Exception {
-        log.info("Preparazione scenario MATSim...");
-        // Configurazione fluida tramite builder
+        log.info("Preparazione scenario MATSim default...");
+
         ConfigRun configRun = ConfigRun.builder()
                 .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
                 .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
@@ -94,58 +152,41 @@ public class MatsimService {
                 .debug(true)
                 .build();
 
-        // Crea l'istanza di scenario con la configurazione
-        this.simulationHandler = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
-        this.isReady = true;
+        initializeScenario(configRun);
     }
 
-    public void setupScenario(SimulationSettingsDTO s) throws Exception {
+    /**
+     * Setup scenario MATSim da DTO custom.
+     */
+    public void setupScenario(SimulationSettingsDTO settings) throws Exception {
         log.info("Preparazione scenario MATSim con parametri custom...");
-        
+
         ConfigRun configRun = ConfigRun.builder()
-                .csvResourceHub(new ClassPathResource(s.getCsvResourceHub()))
-                .csvResourceEv(new ClassPathResource(s.getCsvResourceEv()))
-                .configPath(s.getConfigPath())
-                .vehicleStrategy(s.getVehicleStrategy())
-                .planStrategy(s.getPlanStrategy())
-                .sampleSizeStatic(s.getSampleSizeStatic())
-                .stepSize(s.getStepSize())
-                .numeroVeicoli(s.getNumeroVeicoli())
-                .socMedio(s.getSocMedio())
-                .socStdDev(s.getSocStdDev())
-                .targetSocMean(s.getTargetSocMean())
-                .targetSocStdDev(s.getTargetSocStdDev())
-                .debug(s.getDebug())
+                .csvResourceHub(new ClassPathResource(settings.getCsvResourceHub()))
+                .csvResourceEv(new ClassPathResource(settings.getCsvResourceEv()))
+                .configPath(settings.getConfigPath())
+                .vehicleStrategy(settings.getVehicleStrategy())
+                .planStrategy(settings.getPlanStrategy())
+                .sampleSizeStatic(settings.getSampleSizeStatic())
+                .stepSize(settings.getStepSize())
+                .numeroVeicoli(settings.getNumeroVeicoli())
+                .socMedio(settings.getSocMedio())
+                .socStdDev(settings.getSocStdDev())
+                .targetSocMean(settings.getTargetSocMean())
+                .targetSocStdDev(settings.getTargetSocStdDev())
+                .debug(settings.getDebug())
                 .build();
 
-        this.simulationHandler = new OpenBerlinScenario().withConfigRun(configRun).SetupSimulation();
+        initializeScenario(configRun);
+    }
+
+    /**
+     * Helper comune per inizializzare lo scenario.
+     */
+    private void initializeScenario(ConfigRun configRun) throws Exception {
+        this.simulationHandler = new OpenBerlinScenario()
+                .withConfigRun(configRun)
+                .SetupSimulation();
         this.isReady = true;
-    }
-
-    public void runScenario(SimulationSettingsDTO settings) throws Exception{
-        if(isReady) {
-            log.info("Scenario già pronto, avvio diretto...");
-        } else {
-            setupScenario(settings);
-        }
-
-        log.info("Avvio simulazione MATSim...");
-        simulationPublisherService.setInterface(this.simulationHandler.getInterface());
-        this.simulationHandler.run();
-        log.info("Scenario MATSim completato!");
-    }
-
-    public EvFleetDto getVehiclesInfo() {
-        if (this.simulationHandler == null) {
-            return null;
-        }
-        return this.simulationHandler.getEvFleetDto();
-    }
-
-    public HubListDTO getHubsInfo() {
-        if (this.simulationHandler == null) {
-            return null;
-        }
-        return this.simulationHandler.getHubListDTO();
     }
 }
