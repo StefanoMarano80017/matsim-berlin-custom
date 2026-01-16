@@ -11,6 +11,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
+import org.springboot.service.GenerationService.DTO.HubSpecDto;
 import org.springframework.core.io.Resource;
 import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;
@@ -41,6 +42,9 @@ public final class CustomEvContext {
     private final EvFleetManager evFleetManager;
     private final ChargingInfrastructureSpecification infraSpec;
 
+    /**
+     * Costruttore standard: genera modelli da ConfigRun (modalità legacy/file-based).
+     */
     public CustomEvContext(Scenario scenario, ConfigRun config) {
         this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
         this.hubManager     = initializeHubManager(scenario, config.getCsvResourceHub(), infraSpec);
@@ -54,19 +58,90 @@ public final class CustomEvContext {
 
         log.info("{CustomEvContext} Scenario dati (Hub, EV Fleet, Veicoli default) preparati.");
     }
+
+    /**
+     * Costruttore alternativo: riceve modelli pre-generati dal server.
+     * La generazione è già stata fatta esternamente.
+     */
+    public CustomEvContext(Scenario scenario, ConfigRun config, List<EvModel> evModels, Collection<ChargingHub> chargingHubs) {
+        this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.hubManager     = initializeHubManagerWithModels(scenario, chargingHubs, infraSpec);
+        this.evFleetManager = initializeEvFleetManagerWithModels(scenario, config, evModels);
+
+        registerDefaultVehicles(
+            scenario.getVehicles().getFactory(),
+            scenario.getVehicles(),
+            scenario.getPopulation().getPersons()
+        );
+
+        log.info("{CustomEvContext} Scenario dati (pre-generated Hub, EV Fleet, Veicoli default) preparati.");
+    }
+
+    /**
+     * Costruttore per flusso server-driven: riceve specifiche hub pure (HubSpecDto) dal server.
+     * Traduce le specifiche in ChargingHub e registra nell'infrastruttura MATSim.
+     */
+    public CustomEvContext(Scenario scenario, ConfigRun config, List<EvModel> evModels, List<HubSpecDto> hubSpecs) {
+        this.infraSpec      = new ChargingInfrastructureSpecificationDefaultImpl();
+        this.hubManager     = initializeHubManagerWithSpecs(scenario, hubSpecs, infraSpec);
+        this.evFleetManager = initializeEvFleetManagerWithModels(scenario, config, evModels);
+
+        registerDefaultVehicles(
+            scenario.getVehicles().getFactory(),
+            scenario.getVehicles(),
+            scenario.getPopulation().getPersons()
+        );
+
+        log.info("{CustomEvContext} Scenario dati (server-generated hubs & EVs) preparati.");
+    }
     
     /*
-    *  Inizializzazione Hub Manager 
+    *  Inizializzazione Hub Manager con specifiche pure dal server
+    */
+    private HubManager initializeHubManagerWithSpecs(Scenario scenario, List<HubSpecDto> hubSpecs, ChargingInfrastructureSpecification infraSpec) {
+        HubManager manager = new HubManager(scenario.getNetwork(), infraSpec);
+        manager.registerChargingHubsFromSpecs(hubSpecs);
+        return manager;
+    }
+
+    /*
+    *  Inizializzazione Hub Manager con modelli pre-generati
+    */
+    private HubManager initializeHubManagerWithModels(Scenario scenario, Collection<ChargingHub> chargingHubs, ChargingInfrastructureSpecification infraSpec) {
+        HubManager Manager = new HubManager(scenario.getNetwork(), infraSpec);
+        Manager.registerChargingHubs(chargingHubs);
+        return Manager;
+    }
+
+    /*
+    *  Inizializzazione EvFleetManager con modelli pre-generati
+    */
+    private EvFleetManager initializeEvFleetManagerWithModels(Scenario scenario, ConfigRun config, List<EvModel> evModels) {
+
+        EvFleetManager evFleetManager = new EvFleetManager();
+
+        evFleetManager.setPlanStrategy(
+            createPlanStrategy(config.getPlanStrategy())
+        );
+
+        evFleetManager.setVehicleFactory(
+            new EvVehicleFactory()
+        );
+
+        // Registra i modelli pre-generati e setup scenario
+        evFleetManager.registerEvModels(evModels, scenario);
+
+        return evFleetManager;
+    }
+
+    /*
+    *  Inizializzazione Hub Manager (legacy: genera da CSV)
     */
     private HubManager initializeHubManager(Scenario scenario, Resource csv, ChargingInfrastructureSpecification infraSpec) {
         HubManager Manager = new HubManager(scenario.getNetwork(), infraSpec);
         Manager.createHub(csv);
         return Manager;
     }
-
-    /*
-    *   Inizializzazione EvFleetManager
-    */
     private EvFleetManager initializeEvFleetManager(Scenario scenario, ConfigRun config) {
 
         EvFleetManager evFleetManager = new EvFleetManager();

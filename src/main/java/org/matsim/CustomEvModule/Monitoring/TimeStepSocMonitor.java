@@ -51,7 +51,6 @@ public class TimeStepSocMonitor implements MobsimBeforeSimStepListener, MobsimIn
                 ElectricFleet electricFleet = getElectricFleetFromQSim();
                 if (electricFleet != null) {
                     evFleetManager.updateSoc(electricFleet);
-                    //publishTimeStep(simTime);
                 }
             } catch (Exception e) {
                 log.error("[TimeStepMonitor] Errore aggiornamento stato veicoli: {}", e.getMessage());

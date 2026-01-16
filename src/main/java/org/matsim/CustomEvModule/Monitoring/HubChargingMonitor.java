@@ -37,10 +37,7 @@ public class HubChargingMonitor implements ChargingStartEventHandler, ChargingEn
     }
 
     private void logEvent(String type, String vehicleId, String chargerId, ChargingHub hub, double time, double energy) {
-        String occupiedChargers = hub.getOccupiedChargers()
-                                     .stream()
-                                     .map(Id -> Id.toString())
-                                     .collect(Collectors.joining(", "));
+        String occupiedChargers = hub.getOccupiedChargers().stream().map(Id -> Id.toString()).collect(Collectors.joining(", "));
         log.info("[HubChargingMonitor] [{}] time={} vehicle={} charger={} hub={} occupancy={} totalHubEnergy={} occupiedChargers={}",
                 type,
                 time,

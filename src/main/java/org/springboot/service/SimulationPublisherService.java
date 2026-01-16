@@ -1,20 +1,40 @@
-package org.springboot.SimulationBridge;
+package org.springboot.service;
 
 import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
+import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
+import org.springboot.SimulationBridge.SimulationDataExtractor;
+import org.springboot.websocket.SimulationWebSocketPublisher;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;
 import org.springframework.stereotype.Service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Responsabilità: Orchestrazione dello scheduling e timing della simulazione.
+ * 
+ * Coordina:
+ * 1. Il timing e la frequenza di pubblicazione (scheduling)
+ * 2. L'estrazione dati (delegando a SimulationDataExtractor)
+ * 3. La pubblicazione via WebSocket (delegando a SimulationWebSocketPublisher)
+ * 
+ * NON estrae dati direttamente, NON pubblica direttamente via WebSocket.
+ * Delega queste responsabilità alle classi specializzate.
+ */
 @Service
 public class SimulationPublisherService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SimulationPublisherService.class);
 
     /* ============================================================
      * Dependencies
      * ============================================================ */
-    private final SimulationBridge simulationBridge;
+    private final SimulationDataExtractor dataExtractor;
+    private final SimulationWebSocketPublisher wsPublisher;
     private final ThreadPoolTaskScheduler taskScheduler;
 
     /* ============================================================
@@ -47,17 +67,18 @@ public class SimulationPublisherService {
      * Constructor
      * ============================================================ */
     public SimulationPublisherService(
-            SimulationBridge simulationBridge,
+            SimulationDataExtractor dataExtractor,
+            SimulationWebSocketPublisher wsPublisher,
             ThreadPoolTaskScheduler taskScheduler
     ) {
-        this.simulationBridge = simulationBridge;
+        this.dataExtractor = dataExtractor;
+        this.wsPublisher = wsPublisher;
         this.taskScheduler = taskScheduler;
     }
 
     /* ============================================================
      * Public API
      * ============================================================ */
-
     /**
      * Entry point principale per avviare il publisher
      */
@@ -80,10 +101,29 @@ public class SimulationPublisherService {
         restartScheduler();
     }
 
+    /**
+     * Invia un messaggio generico alla simulazione tramite WebSocket.
+     * Utile per indicare eventi come inizio/fine simulazione.
+     */
+    public void sendSimulationMessage(String message) {
+        wsPublisher.publishMessage(message);
+    }
+
+    /**
+     * Metodi helper per messaggi comuni
+     */
+    public void publishSimulationStart() {
+        sendSimulationMessage("SIMULATION_START");
+    }
+
+    public void publishSimulationEnd() {
+        sendSimulationMessage("SIMULATION_END");
+    }
+
     /* ============================================================
      * Configuration
      * ============================================================ */
-
+    
     private void configureSimulation(
             SimulationBridgeInterface simulationBridgeInterface,
             boolean dirty
@@ -100,7 +140,6 @@ public class SimulationPublisherService {
     /* ============================================================
      * Scheduler lifecycle
      * ============================================================ */
-
     private synchronized void startScheduler() {
         stopScheduler();
 
@@ -125,58 +164,57 @@ public class SimulationPublisherService {
     }
 
     /* ============================================================
-     * Publishing logic
+     * Publishing orchestration
      * ============================================================ */
 
+    /**
+     * Orchestrazione: estrai dati, pubblica, gestisci timing.
+     */
     private void publishSimulationUpdate() {
         if (simulationBridgeInterface == null) {
             return;
         }
 
-        boolean firstSnapshotToSend = isFirstSnapshot();
-
-        boolean started = simulationBridge.publishSimulationSnapshot(
+        try {
+            // 1. Determina se è il primo snapshot
+            boolean firstSnapshotToSend = isFirstSnapshot();
+            
+            // 2. Estrai dati dalla simulazione
+            TimeStepPayload payload = dataExtractor.extractTimeStepSnapshot(
                 simulationBridgeInterface,
-                simTimeSeconds,
                 firstSnapshotToSend
-        );
+            );
+            
+            if (payload == null) {
+                return; // Nessun dato da pubblicare
+            }
 
-        if (started) {
-            advanceSimulationTime();
+            // 3. Imposta il timestamp
+            //dataExtractor.setTimestamp(payload, simTimeSeconds);
+            
+            // 4. Pubblica via WebSocket
+            boolean published = wsPublisher.publishTimeStepSnapshot(payload);
+            
+            if (published) {
+                // 5. Resetta i flag dirty se è stato uno snapshot delta
+                if (!firstSnapshotToSend) {
+                    dataExtractor.resetDirtyFlags(simulationBridgeInterface);
+                }
+                
+                // 6. Avanza il tempo della simulazione
+                advanceSimulationTime();
+            }
+            
+            // 7. Aggiorna lo stato dello snapshot
+            updateSnapshotState();
+            
+        } catch (Exception e) {
+            logger.error("Errore durante publishSimulationUpdate", e);
         }
-
-        updateSnapshotState();
-    }
-
-
-    /* ============================================================
-    * Messaging API
-    * ============================================================ */
-
-    /**
-     * Invia un messaggio generico alla simulazione tramite il bridge.
-     * Utile per indicare eventi come inizio/fine simulazione.
-     */
-    public void sendSimulationMessage(String message) {
-        if (simulationBridgeInterface == null || message == null || message.isBlank()) {
-            return; // ignora se non inizializzato o messaggio vuoto
-        }
-
-        simulationBridge.publishSimulationMessage(message);
-    }
-    /**
-     * Metodi helper per messaggi comuni
-     */
-    public void publishSimulationStart() {
-        sendSimulationMessage("SIMULATION_START");
-    }
-
-    public void publishSimulationEnd() {
-        sendSimulationMessage("SIMULATION_END");
     }
 
     /* ============================================================
-     * Simulation helpers
+     * Simulation timing helpers
      * ============================================================ */
 
     private boolean isFirstSnapshot() {
@@ -185,7 +223,6 @@ public class SimulationPublisherService {
 
     private void advanceSimulationTime() {
         simTimeSeconds += SIM_STEP_SECONDS;
-
         if (simTimeSeconds >= SIM_END_SECONDS) {
             resetSimulationState();
         }
@@ -202,3 +239,4 @@ public class SimulationPublisherService {
         firstSnapshotInternal = true;
     }
 }
+

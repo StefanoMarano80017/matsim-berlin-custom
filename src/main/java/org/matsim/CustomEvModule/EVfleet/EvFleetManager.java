@@ -48,6 +48,67 @@ public class EvFleetManager{
     // ----------------------------------------------------
     // PUBLIC API
     // ----------------------------------------------------
+    
+    /**
+     * Registra i modelli EV pre-generati e li rende disponibili nella simulazione.
+     * Richiede che vehicleFactory e planStrategy siano stati impostati.
+     * 
+     * @param evModels Lista di modelli EV pre-generati (dal server)
+     * @param scenario Scenario MATSim per registrare veicoli e piani
+     */
+    public void registerEvModels(List<EvModel> evModels, Scenario scenario) {
+        if (evModels == null || evModels.isEmpty())
+            throw new IllegalArgumentException("evModels cannot be null or empty");
+
+        if (vehicleFactory == null)
+            throw new IllegalStateException("EvVehicleFactory not set");
+
+        if (planStrategy == null)
+            throw new IllegalStateException("PlanGenerationStrategy not set");
+
+        log.info("[EvFleetManager] Registering {} pre-generated EV models", evModels.size());
+        
+        // 1. Registra modelli nel manager
+        evModels.forEach(model -> 
+            fleet.put(
+                Id.create(model.getVehicleId().toString() + "_car", Vehicle.class), 
+                model
+            )
+        );
+        
+        // 2. Genera veicoli MATSim nello Scenario
+        evModels.forEach(model ->
+            vehicleFactory.createMatsimVehicle(
+                model,
+                scenario.getVehicles(), 
+                Set.of("default", "a", "b")
+            )
+        );
+        
+        // 3. Genera piani tramite strategia
+        evModels.forEach(
+            model -> planStrategy.generatePlanForVehicle(model.getVehicleId(), scenario)
+        );
+    }
+
+    /**
+     * Overload per compatibilità: riceve solo lista di modelli.
+     * Verrà utilizzato da registerEvModels(List<EvModel>) senza scenario.
+     */
+    public void registerEvModels(List<EvModel> evModels) {
+        if (evModels == null || evModels.isEmpty())
+            throw new IllegalArgumentException("evModels cannot be null or empty");
+
+        log.info("[EvFleetManager] Registering {} pre-generated EV models (without scenario setup)", evModels.size());
+        
+        evModels.forEach(model -> 
+            fleet.put(
+                Id.create(model.getVehicleId().toString() + "_car", Vehicle.class), 
+                model
+            )
+        );
+    }
+
     public void generateFleet(Scenario scenario, ConfigRun config){
         if (fleetStrategy == null)
             throw new IllegalStateException("FleetGenerationStrategy not set");

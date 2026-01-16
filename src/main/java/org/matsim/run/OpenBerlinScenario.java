@@ -33,15 +33,16 @@ import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
+import org.springboot.service.GenerationService.DTO.HubSpecDto;
 /*
 *  Custom Libs
 */
 import org.matsim.CustomEvModule.CustomEvContext;
 import org.matsim.CustomEvModule.CustomEvModule;
 
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
-import org.matsim.ServerEvSetup.SimulationInterface.SimulationHandler;
 /*
 *  Guice 
 */
@@ -56,11 +57,15 @@ import playground.vsp.ev.UrbanEVConfigGroup;
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
+
+    private Controler controler;
+
     /*
     * Parametri standard simulazione
     */
     public static final String VERSION = "6.4";
     public static final String CRS = "EPSG:25832";
+
     // Tutti i parametri della run
     private ConfigRun configRun; 
 
@@ -87,11 +92,31 @@ public class OpenBerlinScenario extends MATSimApplication {
 		MATSimApplication.run(OpenBerlinScenario.class, args);
 	}
 
-    public SimulationHandler SetupSimulation() {
+    /**
+     * Setup simulazione con modelli pre-generati dal server (specifiche pure).
+     * 
+     * Flusso server-driven:
+     * 1. Server genera HubSpecDto (modelli di dominio puri)
+     * 2. Vengono passati al bridge e di qui alla simulazione
+     * 3. CustomEvContext li traduce in ChargingHub + specifiche MATSim
+     * 
+     * @param evModels Lista di modelli EV pre-generati dal server
+     * @param hubSpecs Lista di specifiche hub pure (dal server)
+     * @return SimulationBridgeInterface per accedere ai dati della simulazione
+     */
+    public SimulationBridgeInterface SetupSimulationWithServerModels(List<EvModel> evModels, List<HubSpecDto> hubSpecs) {
         if (configRun == null) {
             throw new IllegalStateException(
-                "ConfigRun non inizializzato. Usa il builder ConfigRun prima di prepareScenario."
+                "ConfigRun non inizializzato. Usa il builder ConfigRun prima di SetupSimulationWithServerModels."
             );
+        }
+
+        if (evModels == null || evModels.isEmpty()) {
+            throw new IllegalArgumentException("evModels cannot be null or empty");
+        }
+
+        if (hubSpecs == null || hubSpecs.isEmpty()) {
+            throw new IllegalArgumentException("hubSpecs cannot be null or empty");
         }
 
         // 1. Config
@@ -105,12 +130,19 @@ public class OpenBerlinScenario extends MATSimApplication {
         // 3. Scenario
         Scenario scenario = ScenarioUtils.loadScenario(config);
         
-        CustomEvContext context  = new CustomEvContext(scenario, configRun);
-        CustomEvModule  module   = new CustomEvModule(
-                context.getHubManager(),
-                context.getEvFleetManager(),
-                context.getInfraSpec(),
-                configRun
+        // 4. CustomEvContext con SPECIFICHE HUB PURE dal server
+        CustomEvContext context = new CustomEvContext(
+            scenario, 
+            configRun, 
+            evModels, 
+            hubSpecs
+        );
+
+        CustomEvModule module = new CustomEvModule(
+            context.getHubManager(),
+            context.getEvFleetManager(),
+            context.getInfraSpec(),
+            configRun
         );
 
         // 5. Controller
@@ -125,8 +157,13 @@ public class OpenBerlinScenario extends MATSimApplication {
         );
         
         controler.addControlerListener(bridge);
+        this.controler = controler;
+        return bridge;
+        //return new SimulationHandler(context.getEvModels(), context.getChargingHubs(), bridge, controler, scenario);
+    }
 
-        return new SimulationHandler(context.getEvModels(), context.getChargingHubs(), bridge, controler, scenario);
+    public void run(){
+        this.controler.run();
     }
 
 

@@ -19,8 +19,8 @@ public class ChargingHub {
     /**
      * Charger occupati -> EV che li sta occupando
      */
-    private final Map<Id<Charger>, String> occupiedChargers = new HashMap<>();
-    private final Map<Id<Charger>, Double> chargerEnergy = new HashMap<>();
+    private final Map<Id<Charger>, String>  occupiedChargers = new HashMap<>();
+    private final Map<Id<Charger>, Double>     chargerEnergy = new HashMap<>();
     private final Map<Id<Charger>, Set<String>> chargerPlugs = new HashMap<>();
 
     private double totalEnergy = 0.0;

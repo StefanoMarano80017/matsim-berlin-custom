@@ -14,6 +14,7 @@ import org.springboot.DTO.WebSocketDTO.payload.ChargerStatus;
 import org.springboot.DTO.WebSocketDTO.payload.HubStatusPayload;
 import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
 import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
+import org.springboot.service.GenerationService.DTO.HubSpecDto;
 import org.springframework.util.CollectionUtils;
 
 public class SimulationBridgeInterface implements IterationStartsListener {
@@ -24,8 +25,38 @@ public class SimulationBridgeInterface implements IterationStartsListener {
     private volatile boolean simulationStarted = false;
 
     public SimulationBridgeInterface(HubManager hubManager, EvFleetManager evFleetManager) {
-        this.hubManager = hubManager;
-        this.evFleetManager = evFleetManager;
+        this.hubManager      = hubManager;
+        this.evFleetManager  = evFleetManager;
+    }
+
+    /**
+     * Riceve i modelli EV pre-generati dal server e li registra nel manager.
+     * Questo metodo è chiamato prima della simulazione.
+     * 
+     * @param evModels Lista di EvModel già generati dal server
+     */
+    public void initializeEvModels(List<EvModel> evModels) {
+        if (evModels == null || evModels.isEmpty()) {
+            throw new IllegalArgumentException("evModels cannot be null or empty");
+        }
+        evFleetManager.registerEvModels(evModels);
+    }
+
+    /**
+     * Riceve gli hub di ricarica pre-generati dal server e li registra nel manager.
+     * Questo metodo è chiamato prima della simulazione.
+     * 
+     * Nota: Accetta i modelli di dominio puri (HubSpecDto) generati dal server,
+     * NON le specifiche MATSim. La registrazione nell'infrastruttura viene fatta
+     * dal manager.
+     * 
+     * @param hubSpecs Lista di specifiche hub (modelli di dominio server)
+     */
+    public void initializeChargingHubsFromServerModels(List<HubSpecDto> hubSpecs) {
+        if (hubSpecs == null || hubSpecs.isEmpty()) {
+            throw new IllegalArgumentException("hubSpecs cannot be null or empty");
+        }
+        hubManager.registerChargingHubsFromSpecs(hubSpecs);
     }
 
     @Override
@@ -55,7 +86,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
                     Map<String, ChargerStatus> chargerStates = new HashMap<>();
                     
                     hub.getChargers().forEach(chId -> {
-                        var evId = hub.getEvOccupyingCharger(chId);
+                        String evId = hub.getEvOccupyingCharger(chId);
                         boolean occupied = evId != null;
 
                         chargerStates.put(
@@ -64,7 +95,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
                                 chId.toString(),
                                 occupied,
                                 hub.getChargerEnergy(chId),
-                                occupied ? evId.toString() : null
+                                occupied ? evId : null
                             )
                         );
                     });

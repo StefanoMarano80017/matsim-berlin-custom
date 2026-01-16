@@ -76,7 +76,9 @@ public class TargetSocChargingHandler
 
         List<Charger> compatibleChargers =
             chargingInfrastructure.getChargers().values().stream()
-                .filter(c -> c.getLink().getId().equals(e.getLinkId()))
+                .filter(
+                    c -> c.getLink().getId().equals(e.getLinkId())
+                )
                 .filter(c -> ev.getChargerTypes().contains(
                     c.getSpecification().getChargerType()
                 ))

@@ -1,20 +1,19 @@
 package org.springboot.service;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
+import org.springboot.DTO.SimulationDTO.HubDTO;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
-import org.springboot.SimulationBridge.SimulationPublisherService;
-
+import org.springboot.DTO.SimulationDTO.mapper.HubSpecMapper;
+import org.springboot.service.GenerationService.ModelGenerationService;
+import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
-import org.matsim.ServerEvSetup.SimulationInterface.SimulationHandler;
-import org.matsim.run.OpenBerlinScenario;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,144 +23,128 @@ public class MatsimService {
 
     private static final Logger log = LoggerFactory.getLogger(MatsimService.class);
 
-    // ======= Threading & Async =======
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-    private Future<?> currentFuture = null;
-
     // ======= Dependencies =======
     @Autowired
-    private SimulationPublisherService simulationPublisherService;
+    private ModelGenerationService modelGenerationService;
+    @Autowired
+    private SimulationRunnerService runnerService;
+    
+    // ======= Generation state (server-side models) =======
+    private volatile List<EvModel> generatedEvModels = null;
+    private volatile List<HubSpecDto> generatedHubSpecs = null;
 
-    // ======= Simulation state =======
-    private volatile SimulationHandler simulationHandler;
-    private volatile boolean isReady = false;
-
-    // ===============================
-    // ======= Public API ============
-    // ===============================
-
+    // =================================================
+    // ======= API Controllo simulazione    ============
+    // =================================================
     /**
      * Avvia la simulazione in background.
+     * Verifica che flotta e hub siano stati generati prima.
      */
     public synchronized String runSimulationAsync(SimulationSettingsDTO settings) {
-        if (isSimulationRunning()) {
-            return "Simulazione già in esecuzione.";
-        }
-
-        currentFuture = executor.submit(() -> {
-            try {
-                runSimulation(settings);
-            } catch (Throwable t) {
-                log.warn("Simulazione interrotta: {}", t.getMessage(), t);
-            } finally {
-                simulationHandler = null;
-                isReady = false;
-            }
-        });
-
-        return "Simulazione avviata.";
+        if (generatedEvModels == null) return "Errore: flotta non generata";
+        if (generatedHubSpecs == null) return "Errore: hub non generati";
+        ConfigRun config = buildConfigRun(settings);
+        return runnerService.runAsync(generatedEvModels, generatedHubSpecs, config);
     }
 
     /**
      * Verifica se la simulazione è attiva.
      */
     public boolean isSimulationRunning() {
-        return currentFuture != null && !currentFuture.isDone();
+        return runnerService.isRunning();
     }
 
     /**
-     * Richiesta di interruzione della simulazione.
+    * Richiesta di interruzione della simulazione.
+    */
+    public String stopSimulation() {
+        return runnerService.stop();
+    }
+
+    // ===============================
+    // ======= Generation API ========
+    // ===============================
+    /**
+     * Genera i modelli EV lato server.
+     * Legge il CSV e crea EvModel puri, indipendenti da MATSim.
      */
-    public synchronized String stopSimulation() {
-        if (!isSimulationRunning()) {
-            return "Nessuna simulazione attiva.";
+    public String generateFleet(
+        String csvResourceEv, 
+        Integer numeroVeicoli, 
+        Double socMedio, 
+        Double socStdDev
+    ) {
+        try {
+            log.info("[GenerationAPI] Generating fleet from {}", csvResourceEv);
+            this.generatedEvModels = modelGenerationService.generateEvModels(
+                new ClassPathResource(csvResourceEv),
+                numeroVeicoli,
+                socMedio,
+                socStdDev
+            );
+            log.info("[GenerationAPI] Generated {} EV models", generatedEvModels.size());
+            return "Flotta generata: " + generatedEvModels.size() + " veicoli.";
+        } catch (Exception e) {
+            log.error("[GenerationAPI] Errore nella generazione della flotta", e);
+            this.generatedEvModels = null;
+            throw new RuntimeException("Errore nella generazione della flotta: " + e.getMessage());
         }
-
-        currentFuture.cancel(true);
-        return "Richiesta di interruzione inviata.";
     }
 
     /**
-     * Recupera informazioni sulla flotta EV.
+     * Genera i modelli degli hub lato server.
+     * Legge il CSV e crea HubSpecDto puri, indipendenti da MATSim.
      */
-    public EvFleetDto getVehiclesInfo() {
-        return simulationHandler != null ? simulationHandler.getEvFleetDto() : null;
-    }
-
-    /**
-     * Recupera informazioni sugli hub.
-     */
-    public HubListDTO getHubsInfo() {
-        return simulationHandler != null ? simulationHandler.getHubListDTO() : null;
-    }
-
-    // ===============================
-    // ======= Simulation Lifecycle ==
-    // ===============================
-    private void runSimulation(SimulationSettingsDTO settings) throws Exception {
-        if (!isReady) {
-            setupScenario(settings);
-        } else {
-            log.info("Scenario già pronto, avvio diretto...");
+    public String generateHubs(String csvResourceHub) {
+        try {
+            log.info("[GenerationAPI] Generating hubs from {}", csvResourceHub);
+            this.generatedHubSpecs = modelGenerationService.generateHubSpecifications(
+                new ClassPathResource(csvResourceHub)
+            );
+            log.info("[GenerationAPI] Generated {} hub specifications", generatedHubSpecs.size());
+            return "Hub generati: " + generatedHubSpecs.size() + " hub.";
+        } catch (Exception e) {
+            log.error("[GenerationAPI] Errore nella generazione degli hub", e);
+            this.generatedHubSpecs = null;
+            throw new RuntimeException("Errore nella generazione degli hub: " + e.getMessage());
         }
-
-        log.info("Avvio simulazione MATSim...");
-
-        // --- Notifica inizio simulazione ---
-        simulationPublisherService.sendSimulationMessage("SIMULATION_START");
-
-        // --- Avvio publisher ---
-        simulationPublisherService.startPublisher(
-                simulationHandler.getInterface(),
-                false, // dirty snapshot = false = full snapshot
-                5000   // frequenza in ms
-        );
-
-        // --- Avvio simulazione ---
-        simulationHandler.run();
-
-        log.info("Scenario MATSim completato!");
-
-        // --- Notifica fine simulazione ---
-        simulationPublisherService.sendSimulationMessage("SIMULATION_END");
-    }
-
-    // ===============================
-    // ======= Scenario Setup ========
-    // ===============================
-
-    /**
-     * Setup scenario MATSim di default (demo/test).
-     */
-    public void setupScenario() throws Exception {
-        log.info("Preparazione scenario MATSim default...");
-
-        ConfigRun configRun = ConfigRun.builder()
-                .csvResourceHub(new ClassPathResource("csv/charging_hub.csv"))
-                .csvResourceEv(new ClassPathResource("csv/ev-dataset.csv"))
-                .configPath("input/v%s/berlin-v%s.config.xml")
-                .vehicleStrategy(ConfigRun.VehicleGenerationStrategyEnum.FROM_CSV)
-                .planStrategy(ConfigRun.PlanGenerationStrategyEnum.STATIC)
-                .sampleSizeStatic(0.001)
-                .stepSize(900.0)
-                .numeroVeicoli(2)
-                .socMedio(0.70)
-                .socStdDev(0.05)
-                .targetSocMean(0.90)
-                .targetSocStdDev(0.05)
-                .debug(true)
-                .build();
-
-        initializeScenario(configRun);
     }
 
     /**
-     * Setup scenario MATSim da DTO custom.
+     * Recupera i modelli EV generati dal server.
      */
-    public void setupScenario(SimulationSettingsDTO settings) throws Exception {
-        log.info("Preparazione scenario MATSim con parametri custom...");
+    public EvFleetDto getGeneratedFleet() {
+        return isFleetGenerated() ? new EvFleetDto(generatedEvModels) : null;
+    }
 
-        ConfigRun configRun = ConfigRun.builder()
+    /**
+     * Recupera i modelli degli hub generati dal server.
+     * Converte HubSpecDto → HubDTO tramite HubSpecMapper.
+     */
+    public HubListDTO getGeneratedHubs() {
+        List<HubDTO> hubDtos = generatedHubSpecs.stream().map(HubSpecMapper::toHubDTO).toList();
+        return areHubsGenerated() ? new HubListDTO(hubDtos) : null;
+    }
+
+    /**
+     * Verifica se la flotta è stata generata.
+     */
+    public boolean isFleetGenerated() {
+        return generatedEvModels != null && !generatedEvModels.isEmpty();
+    }
+
+    /**
+     * Verifica se gli hub sono stati generati.
+     */
+    public boolean areHubsGenerated() {
+        return generatedHubSpecs != null && !generatedHubSpecs.isEmpty();
+    }
+
+    /**
+     * Helper per costruire ConfigRun da SimulationSettingsDTO.
+     */
+    private ConfigRun buildConfigRun(SimulationSettingsDTO settings) {
+        return ConfigRun.builder()
                 .csvResourceHub(new ClassPathResource(settings.getCsvResourceHub()))
                 .csvResourceEv(new ClassPathResource(settings.getCsvResourceEv()))
                 .configPath(settings.getConfigPath())
@@ -176,17 +159,6 @@ public class MatsimService {
                 .targetSocStdDev(settings.getTargetSocStdDev())
                 .debug(settings.getDebug())
                 .build();
-
-        initializeScenario(configRun);
     }
 
-    /**
-     * Helper comune per inizializzare lo scenario.
-     */
-    private void initializeScenario(ConfigRun configRun) throws Exception {
-        this.simulationHandler = new OpenBerlinScenario()
-                .withConfigRun(configRun)
-                .SetupSimulation();
-        this.isReady = true;
-    }
 }
