@@ -12,6 +12,7 @@ import org.matsim.vehicles.Vehicle;
 *  Custom Libs
 */
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.CustomEvModule.Hub.TargetSocChargingHandler;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
@@ -39,17 +40,20 @@ public class CustomEvModule extends AbstractModule {
 
     private final HubManager     hubManager;
     private final EvFleetManager evFleetManager;
+    private final SimulationBridgeInterface bridge;
     private final ChargingInfrastructureSpecification infraSpec;
 
     private final ConfigRun config;
     private final boolean debug;
 
     public CustomEvModule(
+        SimulationBridgeInterface bridge,
         HubManager hubManager,
         EvFleetManager evFleetManager,
         ChargingInfrastructureSpecification infraSpec,
         ConfigRun config
     ) {
+        this.bridge = bridge;
         this.hubManager = hubManager;
         this.evFleetManager = evFleetManager;
         this.infraSpec = infraSpec;
@@ -68,17 +72,17 @@ public class CustomEvModule extends AbstractModule {
         /*
         *   Monitor inizio e fine ricarica a un hub
         */
-        HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(hubManager);
+        HubChargingMonitor hubChargingMonitor = new HubChargingMonitor(bridge);
         addEventHandlerBinding().toInstance(hubChargingMonitor);
         /*
         *   Andamento Soc nel tempo, settare il timestep per aggiornamento in discreto 
         */
-        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(evFleetManager, config.getStepSize());        
+        TimeStepSocMonitor timeStepSocMonitor = new TimeStepSocMonitor(bridge, config.getStepSize());        
         addMobsimListenerBinding().toInstance(timeStepSocMonitor);
         /*
         *   Monitor dello stato del veicolo
         */
-        VehicleStatusMonitor vehicleStatusMonitor = new VehicleStatusMonitor(evFleetManager);
+        VehicleStatusMonitor vehicleStatusMonitor = new VehicleStatusMonitor(bridge);
         addEventHandlerBinding().toInstance(vehicleStatusMonitor);
         /*
         *   Modello di consumo del SoC

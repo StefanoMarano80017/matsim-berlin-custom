@@ -59,10 +59,6 @@ public class SimulationPublisherService {
      * ============================================================ */
     private boolean firstSnapshotInternal = true;
 
-    private double simTimeSeconds = 0.0;
-    private static final double SIM_STEP_SECONDS = 900.0;      // 15 min
-    private static final double SIM_END_SECONDS  = 24 * 3600;  // 24h
-
     /* ============================================================
      * Constructor
      * ============================================================ */
@@ -130,7 +126,6 @@ public class SimulationPublisherService {
     ) {
         this.simulationBridgeInterface = simulationBridgeInterface;
         this.dirty = dirty;
-        resetSimulationState();
     }
 
     private void configureRate(long rateMs) {
@@ -189,8 +184,8 @@ public class SimulationPublisherService {
                 return; // Nessun dato da pubblicare
             }
 
-            // 3. Imposta il timestamp
-            //dataExtractor.setTimestamp(payload, simTimeSeconds);
+            // 3. Imposta il timestamp (legge il timestep REALE dal bridge, non virtuale)
+            dataExtractor.setTimestamp(payload, simulationBridgeInterface);
             
             // 4. Pubblica via WebSocket
             boolean published = wsPublisher.publishTimeStepSnapshot(payload);
@@ -201,8 +196,8 @@ public class SimulationPublisherService {
                     dataExtractor.resetDirtyFlags(simulationBridgeInterface);
                 }
                 
-                // 6. Avanza il tempo della simulazione
-                advanceSimulationTime();
+                // Note: Il timestep reale viene impostato dalle classi di Monitoring
+                // attraverso simulationBridgeInterface.setCurrentSimTime(simTime)
             }
             
             // 7. Aggiorna lo stato dello snapshot
@@ -214,29 +209,17 @@ public class SimulationPublisherService {
     }
 
     /* ============================================================
-     * Simulation timing helpers
+     * Snapshot state management
      * ============================================================ */
 
     private boolean isFirstSnapshot() {
         return dirty ? firstSnapshotInternal : true;
     }
 
-    private void advanceSimulationTime() {
-        simTimeSeconds += SIM_STEP_SECONDS;
-        if (simTimeSeconds >= SIM_END_SECONDS) {
-            resetSimulationState();
-        }
-    }
-
     private void updateSnapshotState() {
         if (dirty) {
             firstSnapshotInternal = false;
         }
-    }
-
-    private void resetSimulationState() {
-        simTimeSeconds = 0.0;
-        firstSnapshotInternal = true;
     }
 }
 

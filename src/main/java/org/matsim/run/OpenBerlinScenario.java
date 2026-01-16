@@ -130,7 +130,7 @@ public class OpenBerlinScenario extends MATSimApplication {
         // 3. Scenario
         Scenario scenario = ScenarioUtils.loadScenario(config);
         
-        // 4. CustomEvContext con SPECIFICHE HUB PURE dal server
+        // 4. CustomEvContext  SPECIFICHE HUB PURE dal server -> manager nella simulazione
         CustomEvContext context = new CustomEvContext(
             scenario, 
             configRun, 
@@ -138,7 +138,14 @@ public class OpenBerlinScenario extends MATSimApplication {
             hubSpecs
         );
 
+        // 6. Bridge 
+        SimulationBridgeInterface bridge = new SimulationBridgeInterface(
+            context.getHubManager(),
+            context.getEvFleetManager()
+        );
+        
         CustomEvModule module = new CustomEvModule(
+            bridge,
             context.getHubManager(),
             context.getEvFleetManager(),
             context.getInfraSpec(),
@@ -149,17 +156,9 @@ public class OpenBerlinScenario extends MATSimApplication {
         Controler controler = new Controler(scenario);
         prepareControler(controler);
         controler.addOverridingModule(module);
-
-        // 6. Bridge (solo comunicazione)
-        SimulationBridgeInterface bridge = new SimulationBridgeInterface(
-            context.getHubManager(),
-            context.getEvFleetManager()
-        );
-        
         controler.addControlerListener(bridge);
         this.controler = controler;
         return bridge;
-        //return new SimulationHandler(context.getEvModels(), context.getChargingHubs(), bridge, controler, scenario);
     }
 
     public void run(){
