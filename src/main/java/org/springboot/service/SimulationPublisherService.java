@@ -63,9 +63,9 @@ public class SimulationPublisherService {
      * Constructor
      * ============================================================ */
     public SimulationPublisherService(
-            SimulationDataExtractor dataExtractor,
-            SimulationWebSocketPublisher wsPublisher,
-            ThreadPoolTaskScheduler taskScheduler
+        SimulationDataExtractor dataExtractor,
+        SimulationWebSocketPublisher wsPublisher,
+        ThreadPoolTaskScheduler taskScheduler
     ) {
         this.dataExtractor = dataExtractor;
         this.wsPublisher = wsPublisher;

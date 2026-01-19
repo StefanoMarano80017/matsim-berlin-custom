@@ -34,10 +34,17 @@ public class ConfigRun {
     /* =======================
        Setup run
        ======================= */
-    private final Double sampleSizeStatic;
-    private final Double stepSize;
-    private final String configPath;
-    private final boolean debug;
+    private final Double  sampleSizeStatic;
+    private final Double  stepSize;
+    private final String  configPath;
+    private final boolean debugLink;
+    private final boolean realTime;
+
+    /* =======================
+       Setup ws
+       ======================= */
+    private final Long publisherRateMs;
+    private final boolean publisherDirty;
 
     /* =======================
        Dati veicoli / SOC
@@ -58,10 +65,12 @@ public class ConfigRun {
     private ConfigRun(Builder builder) {
         this.csvResourceHub = builder.csvResourceHub;
         this.csvResourceEv = builder.csvResourceEv;
+
         this.sampleSizeStatic = builder.sampleSizeStatic;
         this.stepSize = builder.stepSize;
         this.configPath = builder.configPath;
-        this.debug = builder.debug;
+        this.debugLink = builder.debugLink;
+        this.realTime = builder.realTime;
 
         this.numeroVeicoli = builder.numeroVeicoli;
         this.socMedio = builder.socMedio;
@@ -72,6 +81,9 @@ public class ConfigRun {
         this.vehicleStrategy = builder.vehicleStrategy;
         this.planStrategy = builder.planStrategy;
         this.hubStrategy = builder.hubStrategy;
+
+        this.publisherRateMs = builder.publisherRateMs;
+        this.publisherDirty  = builder.publisherDirty;
     }
 
     /* =======================
@@ -130,10 +142,21 @@ public class ConfigRun {
         return configPath;
     }
 
-    public boolean isDebug() {
-        return debug;
+    public boolean isDebugLink() {
+        return debugLink;
     }
 
+    public long publisherRateMs(){
+        return publisherRateMs;
+    }
+
+    public boolean publisherDirty(){
+        return publisherDirty;
+    }
+
+    public boolean isRealTime(){
+        return realTime;
+    }
 
     /* =======================
        Builder
@@ -142,8 +165,10 @@ public class ConfigRun {
     public static class Builder {
         private Resource csvResourceHub;
         private Resource csvResourceEv;
+
         private String configPath;
-        private boolean debug = false;
+        private boolean debugLink = false;
+        private boolean realTime = false;
         private Double sampleSizeStatic;
         private Double stepSize;
 
@@ -156,6 +181,9 @@ public class ConfigRun {
         private VehicleGenerationStrategyEnum vehicleStrategy;
         private PlanGenerationStrategyEnum planStrategy;
         private HubGenerationStrategyEnum hubStrategy;
+
+        private Long publisherRateMs;
+        private boolean publisherDirty;
 
         public Builder csvResourceHub(Resource csvResourceHub) {
             this.csvResourceHub = csvResourceHub;
@@ -172,8 +200,8 @@ public class ConfigRun {
             return this;
         }
 
-        public Builder debug(boolean debug) {
-            this.debug = debug;
+        public Builder debugLink(boolean debugLink) {
+            this.debugLink = debugLink;
             return this;
         }
 
@@ -224,6 +252,21 @@ public class ConfigRun {
 
         public Builder hubStrategy(HubGenerationStrategyEnum strategy) {
             this.hubStrategy = strategy;
+            return this;
+        }
+
+        public Builder publisherRateMs(Long publisherRateMs){
+            this.publisherRateMs = publisherRateMs;
+            return this;
+        }
+
+        public Builder publisherDirty(boolean publisherDirty){
+            this.publisherDirty = publisherDirty;
+            return this;
+        }
+
+        public Builder realTime(boolean realTime){
+            this.realTime = realTime;
             return this;
         }
 

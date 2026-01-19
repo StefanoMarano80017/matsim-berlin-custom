@@ -21,6 +21,8 @@ import org.matsim.CustomEvModule.Monitoring.HubChargingMonitor;
 import org.matsim.CustomEvModule.Monitoring.QuickLinkDebugHandler;
 import org.matsim.CustomEvModule.Monitoring.TimeStepSocMonitor;
 import org.matsim.CustomEvModule.Monitoring.VehicleStatusMonitor;
+import org.matsim.CustomEvModule.RealTime.RealTimeConfigurer;
+
 /*
 *  GUICE
 */
@@ -44,7 +46,9 @@ public class CustomEvModule extends AbstractModule {
     private final ChargingInfrastructureSpecification infraSpec;
 
     private final ConfigRun config;
-    private final boolean debug;
+
+    private final boolean debug_link;
+    private final boolean realtime;
 
     public CustomEvModule(
         SimulationBridgeInterface bridge,
@@ -58,7 +62,8 @@ public class CustomEvModule extends AbstractModule {
         this.evFleetManager = evFleetManager;
         this.infraSpec = infraSpec;
         this.config = config;
-        this.debug = config.isDebug();
+        this.debug_link = config.isDebugLink();
+        this.realtime = config.isRealTime();
     }
 
     @Override
@@ -104,10 +109,21 @@ public class CustomEvModule extends AbstractModule {
 			}
 		});
 
-        if(debug == true) {
+        /*
+        *   Logger dei percorsi dei veicoli
+        */
+        if(debug_link) {
             Set<Id<Vehicle>> electricVehicleIds = Collections.unmodifiableSet(evFleetManager.getFleet().keySet());
             QuickLinkDebugHandler debugHandler = new QuickLinkDebugHandler(electricVehicleIds);
             addEventHandlerBinding().toInstance(debugHandler);
+        }
+
+        /*
+        *   dilatazione dei tempi per real time
+        */
+        if(realtime){
+            RealTimeConfigurer realTimeConfigurer = new RealTimeConfigurer();
+            addMobsimListenerBinding().toInstance(realTimeConfigurer);
         }
 
         log.info("Modulo CustomEvModule installato con successo");

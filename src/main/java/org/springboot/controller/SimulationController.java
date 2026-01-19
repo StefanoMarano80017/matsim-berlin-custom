@@ -4,7 +4,9 @@ import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.GenerationRequestDTO;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
+import org.springboot.DTO.SimulationDTO.SimulationResponseDTO;
 import org.springboot.service.MatsimService;
+import org.springboot.service.SimulationState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,37 +35,136 @@ public class SimulationController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Simulazione avviata con successo"),
             @ApiResponse(responseCode = "409", description = "Simulazione già in esecuzione"),
+            @ApiResponse(responseCode = "400", description = "Flotta o hub non generati"),
+            @ApiResponse(responseCode = "500", description = "Errore interno del server")
     })
     @PostMapping("/simulation/run")
-    public ResponseEntity<String> runScenario(@Valid @RequestBody(required = false) SimulationSettingsDTO settings) {
-        // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
-        SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
-        // Chiama il Service e usa la stringa di stato come risposta HTTP
-        String status = matsimService.runSimulationAsync(finalSettings);    
-        if (status.contains("già in esecuzione")) {
-            return ResponseEntity.status(409).body(status); // 409 Conflict
+    public ResponseEntity<SimulationResponseDTO> runScenario(@Valid @RequestBody(required = false) SimulationSettingsDTO settings) {
+        try {
+            // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
+            SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
+            
+            // Controlla se la simulazione è già in esecuzione
+            if (matsimService.isSimulationRunning()) {
+                SimulationResponseDTO response = SimulationResponseDTO.error(
+                    SimulationState.RUNNING.name(),
+                    "Simulazione già in esecuzione",
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+            }
+
+            // Avvia la simulazione
+            String message = matsimService.runSimulationAsync(finalSettings);
+            
+            // Controlla se ci sono stati errori
+            if (message.contains("Errore")) {
+                SimulationResponseDTO response = SimulationResponseDTO.error(
+                    SimulationState.ERROR.name(),
+                    message,
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+            }
+
+            // Simulazione avviata con successo
+            SimulationResponseDTO response = SimulationResponseDTO.success(
+                SimulationState.RUNNING.name(),
+                "Simulazione avviata con successo"
+            );
+            log.info("[SimulationAPI] Simulazione avviata");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("[SimulationAPI] Errore nell'avvio della simulazione", e);
+            SimulationResponseDTO response = SimulationResponseDTO.error(
+                SimulationState.ERROR.name(),
+                "Errore nell'avvio della simulazione",
+                e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-        return ResponseEntity.ok(status);
     }
 
     // --- Endpoint di Arresto ---
     @Operation(summary = "Arresta la simulazione")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Richiesta di shutdown inviata con successo, operazione asincrona"),
+            @ApiResponse(responseCode = "200", description = "Richiesta di shutdown inviata con successo"),
             @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
+            @ApiResponse(responseCode = "500", description = "Errore durante l'arresto")
     })
-    @PostMapping("/shutdown/simulation")
-    public ResponseEntity<String> shutdownScenario() {
-        String status = matsimService.stopSimulation();
-        if (status.contains("Tentativo di interruzione fallito")) {
-            return ResponseEntity.status(503).body(status); // 503 Service Unavailable
+    @PostMapping("/simulation/shutdown")
+    public ResponseEntity<SimulationResponseDTO> shutdownScenario() {
+        try {
+            // Controlla se la simulazione è in esecuzione
+            SimulationState currentState = matsimService.getSimulationState();
+            
+            if (currentState != SimulationState.RUNNING) {
+                SimulationResponseDTO response = SimulationResponseDTO.error(
+                    currentState.name(),
+                    "Nessuna simulazione attiva",
+                    "Stato attuale: " + currentState.getDescription()
+                );
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
+            }
+
+            // Arresta la simulazione
+            String message = matsimService.stopSimulation();
+            
+            // Verifica se c'è stata un'eccezione durante l'arresto
+            Exception lastException = matsimService.getSimulationException();
+            SimulationResponseDTO response = SimulationResponseDTO.success(
+                SimulationState.STOPPED.name(),
+                message
+            );
+            
+            if (lastException != null) {
+                response.setError(lastException.getMessage());
+                log.warn("[SimulationAPI] Errore durante l'arresto: {}", lastException.getMessage());
+            }
+
+            log.info("[SimulationAPI] Richiesta di interruzione inviata");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            log.error("[SimulationAPI] Errore nell'arresto della simulazione", e);
+            SimulationResponseDTO response = SimulationResponseDTO.error(
+                SimulationState.ERROR.name(),
+                "Errore nell'arresto della simulazione",
+                e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-        return ResponseEntity.ok(status);
     }
 
-    // ===============================================
-    // ======= Generation API   ========
-    // ===============================================
+    // --- Endpoint per controllare lo stato ---
+    @Operation(summary = "Restituisce lo stato attuale della simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Stato della simulazione")
+    })
+    @GetMapping("/simulation/status")
+    public ResponseEntity<SimulationResponseDTO> getSimulationStatus() {
+        try {
+            SimulationState state = matsimService.getSimulationState();
+            Exception lastException = matsimService.getSimulationException();
+            
+            SimulationResponseDTO response = new SimulationResponseDTO(
+                state.name(),
+                "Stato attuale: " + state.getDescription(),
+                lastException != null ? lastException.getMessage() : null
+            );
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("[SimulationAPI] Errore nel recupero dello stato", e);
+            SimulationResponseDTO response = SimulationResponseDTO.error(
+                SimulationState.ERROR.name(),
+                "Errore nel recupero dello stato",
+                e.getMessage()
+            );
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
 
     /**
      * Genera i modelli EV lato server.

@@ -12,38 +12,106 @@ import org.matsim.run.OpenBerlinScenario;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class SimulationRunnerService {
 
+    private static final Logger log = LoggerFactory.getLogger(SimulationRunnerService.class);
+
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Future<?> currentFuture = null;
+    private SimulationState currentState = SimulationState.IDLE;
+    private Exception lastException = null;
 
     @Autowired
     private SimulationPublisherService simulationPublisherService;
 
+    /**
+     * Verifica se la simulazione è in esecuzione
+     */
     public synchronized boolean isRunning() {
-        return currentFuture != null && !currentFuture.isDone();
+        return currentState == SimulationState.RUNNING;
     }
 
+    /**
+     * Restituisce lo stato attuale della simulazione
+     */
+    public synchronized SimulationState getCurrentState() {
+        return currentState;
+    }
+
+    /**
+     * Restituisce l'ultima eccezione verificatasi
+     */
+    public synchronized Exception getLastException() {
+        return lastException;
+    }
+
+    /**
+     * Arresta la simulazione in esecuzione
+     */
     public synchronized String stop() {
-        if (!isRunning()) return "Nessuna simulazione attiva.";
-        currentFuture.cancel(true);
-        return "Richiesta di interruzione inviata.";
+        if (currentState != SimulationState.RUNNING) {
+            return "Nessuna simulazione attiva.";
+        }
+        try {
+            if (currentFuture != null) {
+                currentFuture.cancel(true);
+            }
+            currentState = SimulationState.STOPPED;
+            lastException = null;
+            return "Richiesta di interruzione inviata.";
+        } catch (Exception e) {
+            log.error("Errore durante l'arresto della simulazione", e);
+            currentState = SimulationState.ERROR;
+            lastException = e;
+            return "Errore durante l'arresto: " + e.getMessage();
+        }
     }
 
+    /**
+     * Avvia la simulazione in modalità asincrona
+     */
     public synchronized String runAsync(List<EvModel> evModels, List<HubSpecDto> hubSpecs, ConfigRun config) {
-        if (isRunning()) return "Simulazione già in esecuzione.";
+        if (currentState == SimulationState.RUNNING) {
+            return "Simulazione già in esecuzione.";
+        }
+        
+        // Resetta lo stato precedente
+        currentState = SimulationState.RUNNING;
+        lastException = null;
+        currentFuture = null;
+
         currentFuture = executor.submit(() -> {
             try {
                 runSimulation(evModels, hubSpecs, config);
+                synchronized (SimulationRunnerService.this) {
+                    currentState = SimulationState.COMPLETED;
+                    log.info("Simulazione completata con successo");
+                }
+            } catch (InterruptedException e) {
+                synchronized (SimulationRunnerService.this) {
+                    currentState = SimulationState.STOPPED;
+                    lastException = e;
+                    log.warn("Simulazione interrotta", e);
+                }
+                Thread.currentThread().interrupt();
             } catch (Throwable t) {
-                // log
-            } 
+                synchronized (SimulationRunnerService.this) {
+                    currentState = SimulationState.ERROR;
+                    lastException = t instanceof Exception ? (Exception) t : new Exception(t);
+                    log.error("Errore durante l'esecuzione della simulazione", t);
+                }
+            }
         });
         return "Simulazione avviata.";
     }
 
+    /**
+     * Esegue la simulazione nel thread worker
+     */
     private void runSimulation(
         List<EvModel> evModels, 
         List<HubSpecDto> hubSpecs, 
@@ -51,7 +119,7 @@ public class SimulationRunnerService {
     ) throws Exception {
         OpenBerlinScenario scenarioApp = new OpenBerlinScenario().withConfigRun(config);
         SimulationBridgeInterface Bridgeinterface = scenarioApp.SetupSimulationWithServerModels(evModels, hubSpecs);
-        simulationPublisherService.startPublisher(Bridgeinterface, false, 5000);
+        simulationPublisherService.startPublisher(Bridgeinterface, config.publisherDirty(), config.publisherRateMs());
         simulationPublisherService.sendSimulationMessage("SIMULATION_START");
         scenarioApp.run();
         simulationPublisherService.sendSimulationMessage("SIMULATION_END");

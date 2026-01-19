@@ -25,7 +25,7 @@ public class SimulationSettingsDTO {
     private Double sampleSizeStatic = 0.001;
 
     @Positive(message = "Lo stepSize deve essere maggiore di zero")
-    private Double stepSize = 900.0;
+    private Double stepSize = 60.0; //aggiorno il soc veicoli ogni minuto
 
     @Min(value = 1, message = "Deve esserci almeno un veicolo")
     private Integer numeroVeicoli = 2;
@@ -42,10 +42,13 @@ public class SimulationSettingsDTO {
 
     @PositiveOrZero
     private Double targetSocStdDev = 0.05;
-    private Boolean debug = false;
+
+    private Boolean debugLink = false;
 
     //Setup publisher
     @Positive(message = "Il rate del publisher deve essere maggiore di zero")
-    private Long publisherRateMs = 5000L; // default 5s
+    private Long publisherRateMs = 60000L; // default 5s 1min
     private boolean publisherDirty = false; // default snapshot full
+
+    private Boolean RealTime = false;
 }

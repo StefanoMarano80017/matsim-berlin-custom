@@ -5,10 +5,10 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.HubDTO;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
-import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.DTO.SimulationDTO.mapper.HubSpecMapper;
 import org.springboot.service.GenerationService.ModelGenerationService;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
@@ -41,8 +41,12 @@ public class MatsimService {
      * Verifica che flotta e hub siano stati generati prima.
      */
     public synchronized String runSimulationAsync(SimulationSettingsDTO settings) {
-        if (generatedEvModels == null) return "Errore: flotta non generata";
-        if (generatedHubSpecs == null) return "Errore: hub non generati";
+        if(generatedEvModels == null || generatedHubSpecs == null){
+            String status = "Errore: ";
+            if (generatedEvModels == null) status += "flotta non generata ";
+            if (generatedHubSpecs == null) status += "hub non generati";
+            return status;
+        }
         ConfigRun config = buildConfigRun(settings);
         return runnerService.runAsync(generatedEvModels, generatedHubSpecs, config);
     }
@@ -52,6 +56,20 @@ public class MatsimService {
      */
     public boolean isSimulationRunning() {
         return runnerService.isRunning();
+    }
+
+    /**
+     * Restituisce lo stato attuale della simulazione.
+     */
+    public SimulationState getSimulationState() {
+        return runnerService.getCurrentState();
+    }
+
+    /**
+     * Restituisce l'ultima eccezione verificatasi nella simulazione.
+     */
+    public Exception getSimulationException() {
+        return runnerService.getLastException();
     }
 
     /**
@@ -157,7 +175,10 @@ public class MatsimService {
                 .socStdDev(settings.getSocStdDev())
                 .targetSocMean(settings.getTargetSocMean())
                 .targetSocStdDev(settings.getTargetSocStdDev())
-                .debug(settings.getDebug())
+                .debugLink(settings.getDebugLink())
+                .realTime(settings.getRealTime())
+                .publisherDirty(settings.isPublisherDirty())
+                .publisherRateMs(settings.getPublisherRateMs())
                 .build();
     }
 

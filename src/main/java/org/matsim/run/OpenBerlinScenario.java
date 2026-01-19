@@ -31,7 +31,6 @@ import org.matsim.core.router.costcalculators.OnlyTimeDependentTravelDisutilityF
 import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
-import org.matsim.simwrapper.SimWrapperConfigGroup;
 import org.matsim.simwrapper.SimWrapperModule;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
 /*
@@ -165,7 +164,6 @@ public class OpenBerlinScenario extends MATSimApplication {
         this.controler.run();
     }
 
-
     @SuppressWarnings("deprecation")
     @Override
     protected Config prepareConfig(Config config) {
@@ -184,12 +182,10 @@ public class OpenBerlinScenario extends MATSimApplication {
                     .setMinimalDuration(300)
         );
 
-        SimWrapperConfigGroup sw = ConfigUtils.addOrGetModule(config, SimWrapperConfigGroup.class);
         double sampleSize = (this.sampleSizeStatic != null) ? this.sampleSizeStatic : sample.getSample();
         config.qsim().setFlowCapFactor(sampleSize);
         config.qsim().setStorageCapFactor(sampleSize);
         config.counts().setCountsScaleFactor(sampleSize);
-        sw.sampleSize = sampleSize;
         config.controller().setRunId(sample.adjustName(config.controller().getRunId()));
         config.controller().setOutputDirectory(sample.adjustName(config.controller().getOutputDirectory()));
         config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
@@ -198,34 +194,6 @@ public class OpenBerlinScenario extends MATSimApplication {
         RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
 
         Activities.addScoringParams(config, true);
-
-        // Strategia di replanning
-        for (String subpopulation : List.of("person", "freight", "goodsTraffic", "commercialPersonTraffic", "commercialPersonTraffic_service")) {
-            config.replanning().addStrategySettings(
-                    new StrategySettings()
-                            .setStrategyName(DefaultPlanStrategiesModule.DefaultSelector.ChangeExpBeta)
-                            .setWeight(1.0)
-                            .setSubpopulation(subpopulation)
-            );
-            config.replanning().addStrategySettings(
-                    new StrategySettings()
-                            .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute)
-                            .setWeight(0.15)
-                            .setSubpopulation(subpopulation)
-            );
-        }
-
-        config.replanning().addStrategySettings(
-                new StrategySettings()
-                    .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.TimeAllocationMutator)
-                    .setWeight(0.15).setSubpopulation("person")
-        );
-        
-        config.replanning().addStrategySettings(
-                new StrategySettings()
-                    .setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.SubtourModeChoice)
-                    .setWeight(0.15).setSubpopulation("person")
-        );
 
         // Forziamo ReRoute Iterazione 0
         StrategySettings initialReRoute = new StrategySettings();
