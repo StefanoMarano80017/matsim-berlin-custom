@@ -184,14 +184,18 @@ public class HubManager {
         return charger2hub.get(chargerId);
     }
 
-    public void incrementOccupancy(Id<Charger> chargerId, String evId, double energy) {
+    public void incrementOccupancy(Id<Charger> chargerId, String evId) {
         ChargingHub hub = getHub(getHubIdForCharger(chargerId));
-        hub.incrementOccupancy(chargerId, evId, energy);
+        if (hub != null) {
+            hub.incrementOccupancy(chargerId, evId);
+        }
     }
 
     public void decrementOccupancy(Id<Charger> chargerId, double energy) {
         ChargingHub hub = getHub(getHubIdForCharger(chargerId));
-        hub.decrementOccupancy(chargerId, energy);
+        if(hub != null){
+            hub.decrementOccupancy(chargerId, energy);
+        }
     }
 
     public Collection<ChargingHub> getAllHubs() {

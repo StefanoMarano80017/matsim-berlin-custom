@@ -8,7 +8,16 @@ public class ChargerStatus {
 
     private String chargerId;
     private boolean occupied;
+
+    /*
+    *  valore cumulativo di energia distribuita
+    */
     private double energy;
+
+    /*
+    *  valore di energia istantanea che sta venendo erogata
+    */
+    private double charging_energy;
 
     @Schema(description = "ID del veicolo elettrico collegato (obbligatorio se occupied=true)")
     private String evId;
@@ -16,10 +25,17 @@ public class ChargerStatus {
     public ChargerStatus() {
     }
 
-    public ChargerStatus(String chargerId, boolean occupied, double energy, String evId) {
+    public ChargerStatus(
+        String chargerId,
+        boolean occupied, 
+        double energy, 
+        double charging_energy,
+        String evId
+    ) {
         this.chargerId = chargerId;
         this.occupied = occupied;
         this.energy = energy;
+        this.charging_energy = charging_energy;
         this.evId = evId;
     }
 
@@ -45,6 +61,14 @@ public class ChargerStatus {
 
     public void setEnergy(double energy) {
         this.energy = energy;
+    }
+
+    public void setCharging_energy(double energy){
+        if(occupied) this.charging_energy = energy;
+    }
+
+    public double getChargin_energy(){
+        return charging_energy;
     }
 
     public String getEvId() {

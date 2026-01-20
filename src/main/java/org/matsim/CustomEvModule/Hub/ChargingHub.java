@@ -7,23 +7,23 @@ import org.matsim.contrib.ev.infrastructure.Charger;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ChargingHub {
 
     private final String hubId;
     private final Id<Link> linkId;
-    private final Set<Id<Charger>> chargers = new HashSet<>();
-
+    
     /**
-     * Charger occupati -> EV che li sta occupando
+     * Mappa charger ID -> ChargerUnit
+     * Contiene tutte le unità di ricarica dell'hub con i loro stati
      */
-    private final Map<Id<Charger>, String>  occupiedChargers = new HashMap<>();
-    private final Map<Id<Charger>, Double>     chargerEnergy = new HashMap<>();
-    private final Map<Id<Charger>, Set<String>> chargerPlugs = new HashMap<>();
+    private final Map<Id<Charger>, ChargerUnit> chargerUnits = new HashMap<>();
 
-    private double totalEnergy = 0.0;
+    private double totalCumulativeEnergy = 0.0;
     private boolean dirty = true;
 
     public ChargingHub(String hubId, Id<Link> linkId) {
@@ -37,106 +37,235 @@ public class ChargingHub {
 
     // -------------------- MUTATOR METHODS --------------------
 
-    public synchronized void addCharger(Id<Charger> chargerId) {
-        chargers.add(chargerId);
-        chargerEnergy.putIfAbsent(chargerId, 0.0);
-        dirty = true;
-    }
-
-    public synchronized void removeCharger(Id<Charger> chargerId) {
-        chargers.remove(chargerId);
-        occupiedChargers.remove(chargerId);
-        chargerEnergy.remove(chargerId);
+    /**
+     * Aggiunge una colonnina all'hub con plugs specifici
+     * 
+     * @param chargerId ID della colonnina
+     * @param plugs Set di tipologie di plug disponibili
+     */
+    public synchronized void addCharger(Id<Charger> chargerId, Set<String> plugs) {
+        ChargerUnit unit = new ChargerUnit(chargerId, plugs);
+        chargerUnits.put(chargerId, unit);
         dirty = true;
     }
 
     /**
-     * Segna un charger come occupato da un EV
+     * Aggiunge una colonnina all'hub senza plugs specifici
+     * 
+     * @param chargerId ID della colonnina
      */
-    public synchronized void incrementOccupancy(Id<Charger> chargerId, String evId, double energy) {
-        if (!chargers.contains(chargerId)) {
+    public synchronized void addCharger(Id<Charger> chargerId) {
+        ChargerUnit unit = new ChargerUnit(chargerId);
+        chargerUnits.put(chargerId, unit);
+        dirty = true;
+    }
+
+    /**
+     * Rimuove una colonnina dall'hub
+     * 
+     * @param chargerId ID della colonnina da rimuovere
+     */
+    public synchronized void removeCharger(Id<Charger> chargerId) {
+        ChargerUnit unit = chargerUnits.remove(chargerId);
+        if (unit != null) {
+            totalCumulativeEnergy -= unit.getCumulativeEnergyDelivered();
+        }
+        dirty = true;
+    }
+
+    /**
+     * Segna una colonnina come occupata da un EV (inizio ricarica)
+     * 
+     * @param chargerId ID della colonnina
+     * @param evId ID dell'EV che inizia la ricarica
+     */
+    public synchronized void incrementOccupancy(Id<Charger> chargerId, String evId) {
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        if (unit == null) {
             throw new IllegalArgumentException("Charger non appartiene all'hub: " + chargerId);
         }
-
-        if (occupiedChargers.containsKey(chargerId)) {
-            throw new IllegalStateException("Charger già occupato: " + chargerId);
-        }
-
-        occupiedChargers.put(chargerId, evId);
-        addChargerEnergy(chargerId, energy);
+        unit.setOccupyingEv(evId);
         dirty = true;
     }
 
     /**
-     * Libera un charger
+     * Libera una colonnina e registra l'energia erogata (fine ricarica)
+     * 
+     * @param chargerId ID della colonnina
+     * @param energy Energia erogata durante la ricarica
      */
     public synchronized void decrementOccupancy(Id<Charger> chargerId, double energy) {
-        occupiedChargers.remove(chargerId);
-        addChargerEnergy(chargerId, energy);
-        dirty = true;
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        if (unit != null) {
+            unit.releaseOccupyingEv();
+            unit.addCumulativeEnergyDelivered(energy);
+            totalCumulativeEnergy += energy;
+            dirty = true;
+        }
     }
 
-    private synchronized void addChargerEnergy(Id<Charger> chargerId, double energy) {
-        chargerEnergy.put(chargerId, chargerEnergy.getOrDefault(chargerId, 0.0) + energy);
-        totalEnergy += energy;
+    /**
+     * Aggiorna l'energia che la colonnina sta erogando in questo timestep.
+     * Chiamato da TimeStepSocMonitor ad ogni timestep.
+     * 
+     * @param chargerId ID della colonnina
+     * @param energy Energia erogata in questo timestep
+     */
+    public synchronized void updateChargerEnergyDelivering(Id<Charger> chargerId, double energy) {
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        if (unit != null) {
+            unit.setCurrentEnergyDelivering(energy);
+            dirty = true;
+        }
     }
 
-    public synchronized void addCharger(Id<Charger> chargerId, Set<String> plugs) {
-        chargers.add(chargerId);
-        chargerEnergy.putIfAbsent(chargerId, 0.0);
-        chargerPlugs.put(chargerId, plugs);
-        dirty = true;
+    /**
+     * Resetta l'energia in erogazione per tutte le colonnine.
+     * Deve essere chiamato all'inizio di ogni timestep.
+     */
+    public synchronized void resetCurrentEnergyDelivering() {
+        chargerUnits.values().forEach(ChargerUnit::resetCurrentEnergyDelivering);
     }
 
-    public synchronized Set<String> getPlugs(Id<Charger> chargerId) {
-        return chargerPlugs.getOrDefault(chargerId, Set.of());
+    /**
+     * Ottieni una ChargerUnit specifica
+     * 
+     * @param chargerId ID della colonnina
+     * @return La ChargerUnit o null se non presente
+     */
+    public synchronized ChargerUnit getChargerUnit(Id<Charger> chargerId) {
+        return chargerUnits.get(chargerId);
     }
-
 
     // -------------------- ACCESSOR METHODS --------------------
-    public synchronized Set<Id<Charger>> getChargers() {
-        return Collections.unmodifiableSet(new HashSet<>(chargers));
+    
+    /**
+     * Ritorna tutte le ChargerUnit dell'hub
+     * 
+     * @return Lista immutabile di ChargerUnit
+     */
+    public synchronized List<ChargerUnit> getChargerUnits() {
+        return Collections.unmodifiableList(
+            new java.util.ArrayList<>(chargerUnits.values())
+        );
     }
 
     /**
-     * Charger occupati
+     * Ritorna gli ID di tutte le colonnine
+     * 
+     * @return Set immutabile degli ID
+     */
+    public synchronized Set<Id<Charger>> getChargers() {
+        return Collections.unmodifiableSet(new HashSet<>(chargerUnits.keySet()));
+    }
+
+    /**
+     * Ritorna i plug disponibili per una colonnina
+     * 
+     * @param chargerId ID della colonnina
+     * @return Set di plug o Set vuoto se non presente
+     */
+    public synchronized Set<String> getPlugs(Id<Charger> chargerId) {
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        return unit != null ? unit.getPlugs() : Set.of();
+    }
+
+    /**
+     * Ritorna gli ID delle colonnine occupate
+     * 
+     * @return Set immutabile degli ID occupati
      */
     public synchronized Set<Id<Charger>> getOccupiedChargers() {
-        return Collections.unmodifiableSet(new HashSet<>(occupiedChargers.keySet()));
+        return chargerUnits.values().stream()
+            .filter(ChargerUnit::isOccupied)
+            .map(ChargerUnit::getChargerId)
+            .collect(Collectors.toSet());
     }
 
     /**
-     * Mappa completa charger -> evId
+     * Mappa charger ID -> EV che lo occupa
+     * 
+     * @return Mappa immutabile
      */
     public synchronized Map<Id<Charger>, String> getOccupiedChargersWithEv() {
-        return Collections.unmodifiableMap(new HashMap<>(occupiedChargers));
+        return chargerUnits.values().stream()
+            .filter(ChargerUnit::isOccupied)
+            .collect(Collectors.toUnmodifiableMap(
+                ChargerUnit::getChargerId,
+                ChargerUnit::getOccupyingEvId
+            ));
     }
 
+    /**
+     * Numero di colonnine occupate
+     * 
+     * @return Numero di occupancy
+     */
     public synchronized int getOccupancy() {
-        return occupiedChargers.size();
+        return (int) chargerUnits.values().stream()
+            .filter(ChargerUnit::isOccupied)
+            .count();
     }
 
+    /**
+     * Energia cumulativa totale erogata da tutte le colonnine
+     * 
+     * @return Energia totale in Joule
+     */
     public synchronized double getTotalEnergy() {
-        return totalEnergy;
+        return totalCumulativeEnergy;
     }
 
+    /**
+     * Controlla se l'hub contiene una colonnina
+     * 
+     * @param chargerId ID della colonnina
+     * @return true se presente, false altrimenti
+     */
     public synchronized boolean containsCharger(Id<Charger> chargerId) {
-        return chargers.contains(chargerId);
+        return chargerUnits.containsKey(chargerId);
     }
 
+    /**
+     * Energia cumulativa erogata da una specifica colonnina
+     * 
+     * @param chargerId ID della colonnina
+     * @return Energia cumulativa in Joule
+     */
     public synchronized double getChargerEnergy(Id<Charger> chargerId) {
-        return chargerEnergy.getOrDefault(chargerId, 0.0);
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        return unit != null ? unit.getCumulativeEnergyDelivered() : 0.0;
     }
 
+    /**
+     * Energia attualmente in erogazione da una colonnina in questo timestep
+     * 
+     * @param chargerId ID della colonnina
+     * @return Energia in erogazione in Joule
+     */
+    public synchronized double getChargerCurrentEnergyDelivering(Id<Charger> chargerId) {
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        return unit != null ? unit.getCurrentEnergyDelivering() : 0.0;
+    }
+
+    /**
+     * Link dove si trova l'hub
+     * 
+     * @return ID del link
+     */
     public synchronized Id<Link> getLink() {
         return this.linkId;
     }
 
     /**
-     * Restituisce l'EV che occupa un charger (null se libero)
+     * EV che occupa una colonnina
+     * 
+     * @param chargerId ID della colonnina
+     * @return ID dell'EV o null se libera
      */
     public synchronized String getEvOccupyingCharger(Id<Charger> chargerId) {
-        return occupiedChargers.get(chargerId);
+        ChargerUnit unit = chargerUnits.get(chargerId);
+        return unit != null ? unit.getOccupyingEvId() : null;
     }
 
     // -------------------- Dirty flag --------------------

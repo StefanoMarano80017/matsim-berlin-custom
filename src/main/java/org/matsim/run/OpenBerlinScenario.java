@@ -139,8 +139,8 @@ public class OpenBerlinScenario extends MATSimApplication {
 
         // 6. Bridge 
         SimulationBridgeInterface bridge = new SimulationBridgeInterface(
-            context.getHubManager(),
-            context.getEvFleetManager()
+            context.getEvFleetManager(),
+            context.getHubManager()
         );
         
         CustomEvModule module = new CustomEvModule(
@@ -168,27 +168,29 @@ public class OpenBerlinScenario extends MATSimApplication {
     @Override
     protected Config prepareConfig(Config config) {
         // --- Creazione EV config---
-        EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
-        evConfig.chargersFile = "fake_chargers.xml"; // Placeholder
-        UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
-        urbanEVConfig.setCriticalSOC(0.9);
-        config.routing().setAccessEgressType(RoutingConfigGroup.AccessEgressType.none);
+        SetEvModule(config);
 
-        // Register EV charging activities
-        config.scoring().addActivityParams(
-            new ActivityParams("car charging")
-                    .setScoringThisActivityAtAll(false)
-                    .setTypicalDuration(3600 * 2)
-                    .setMinimalDuration(300)
+        config.routing().setAccessEgressType(
+            RoutingConfigGroup.AccessEgressType.none
         );
 
-        double sampleSize = (this.sampleSizeStatic != null) ? this.sampleSizeStatic : sample.getSample();
-        config.qsim().setFlowCapFactor(sampleSize);
-        config.qsim().setStorageCapFactor(sampleSize);
-        config.counts().setCountsScaleFactor(sampleSize);
-        config.controller().setRunId(sample.adjustName(config.controller().getRunId()));
-        config.controller().setOutputDirectory(sample.adjustName(config.controller().getOutputDirectory()));
-        config.plans().setInputFile(sample.adjustName(config.plans().getInputFile()));
+        SetSampleSize(config);
+
+        config.controller().setRunId(
+            sample.adjustName(
+                config.controller().getRunId()
+            )
+        );
+        config.controller().setOutputDirectory(
+            sample.adjustName(
+                config.controller().getOutputDirectory()
+            )
+        );
+        config.plans().setInputFile(
+            sample.adjustName(
+                config.plans().getInputFile()
+            )
+        );
 
         config.qsim().setUsingTravelTimeCheckInTeleportation(true);
         RideScoringParamsFromCarParams.setRideScoringParamsBasedOnCarParams(config.scoring(), 1.0);
@@ -196,20 +198,12 @@ public class OpenBerlinScenario extends MATSimApplication {
         Activities.addScoringParams(config, true);
 
         // Forziamo ReRoute Iterazione 0
-        StrategySettings initialReRoute = new StrategySettings();
-        initialReRoute.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute);
-        initialReRoute.setWeight(1.0);
-        initialReRoute.setDisableAfter(1);
-        config.replanning().addStrategySettings(initialReRoute);
+        SetInitialReRoute(config);
 
         config.qsim().setUsePersonIdForMissingVehicleId(false);
 
         // Bicycle config
         ConfigUtils.addOrGetModule(config, BicycleConfigGroup.class);
-
-        // Single iteration
-        config.controller().setLastIteration(1);
-        config.controller().setWriteEventsInterval(1);
 
         PlansConfigGroup plansConfig = config.plans();
         plansConfig.setHandlingOfPlansWithoutRoutingMode(PlansConfigGroup.HandlingOfPlansWithoutRoutingMode.useMainModeIdentifier);
@@ -229,6 +223,45 @@ public class OpenBerlinScenario extends MATSimApplication {
         controler.addOverridingModule(new PersonMoneyEventsAnalysisModule());
     }
 
+    /*
+    *  Set Ev Module
+    */
+    private void SetEvModule(Config config){
+        // --- Creazione EV config---
+        EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
+        evConfig.chargersFile = "fake_chargers.xml"; // Placeholder
+        UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
+        urbanEVConfig.setCriticalSOC(0.9);
+        // Register EV charging activities
+        config.scoring().addActivityParams(
+            new ActivityParams("car charging")
+                    .setScoringThisActivityAtAll(false)
+                    .setTypicalDuration(3600 * 2)
+                    .setMinimalDuration(300)
+        );
+    }
+
+    /*
+    *   Set sample size
+    */
+    private void SetSampleSize(Config config){
+        double sampleSize = (this.sampleSizeStatic != null) ? this.sampleSizeStatic : sample.getSample();
+        config.qsim().setFlowCapFactor(sampleSize);
+        config.qsim().setStorageCapFactor(sampleSize);
+        config.counts().setCountsScaleFactor(sampleSize);
+    }
+
+    /*
+    *  Set Initial ReRouting
+    */
+    private void SetInitialReRoute(Config config){
+        // Forziamo ReRoute Iterazione 0
+        StrategySettings initialReRoute = new StrategySettings();
+        initialReRoute.setStrategyName(DefaultPlanStrategiesModule.DefaultStrategy.ReRoute);
+        initialReRoute.setWeight(1.0);
+        initialReRoute.setDisableAfter(1);
+        config.replanning().addStrategySettings(initialReRoute);
+    }
     /**
      * Add travel time bindings for ride and freight modes, which are not actually network modes.
      */

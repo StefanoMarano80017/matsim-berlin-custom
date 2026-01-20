@@ -47,7 +47,7 @@ public class SimulationSettingsDTO {
 
     //Setup publisher
     @Positive(message = "Il rate del publisher deve essere maggiore di zero")
-    private Long publisherRateMs = 60000L; // default 5s 1min
+    private Long publisherRateMs = 5000L; // default 5s
     private boolean publisherDirty = false; // default snapshot full
 
     private Boolean RealTime = false;

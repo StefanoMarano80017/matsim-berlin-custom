@@ -3,6 +3,7 @@ package org.matsim.CustomEvModule;
 *  Standard libs
 */
 import org.matsim.api.core.v01.Id;
+import org.matsim.contrib.ev.discharging.AuxEnergyConsumption;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.core.controler.AbstractModule;
@@ -99,6 +100,11 @@ public class CustomEvModule extends AbstractModule {
                 return new EvConsumptionModelFactory(providerEvFleetManager);
             }
         }).asEagerSingleton();
+
+        //a dummy factory, as aux consumption is part of the drive consumption in the model
+        bind( AuxEnergyConsumption.Factory.class )
+            .toInstance(electricVehicle -> ( beginTime, duration, linkId ) -> 0 ); 
+
         /*
         *   Handler della ricarica nel piano + strategia soc target
         */

@@ -45,15 +45,27 @@ public class TimeStepSocMonitor implements MobsimBeforeSimStepListener, MobsimIn
         if (qSim == null) return;
         if (simTime - lastUpdate >= stepSize) {
             lastUpdate = simTime;
-            try {
-                ElectricFleet electricFleet = getElectricFleetFromQSim();
-                // Aggiorna SoC attraverso il bridge
-                simulationBridgeInterface.updateEvFleetSoC(electricFleet);      
-                // Imposta il timestep reale della simulazione nel bridge per il server
-                simulationBridgeInterface.setCurrentSimTime(simTime);
-            } catch (Exception e) {
-                log.error("[TimeStepMonitor] Errore aggiornamento stato veicoli: {}", e.getMessage());
-            }
+            updateCharging(simTime);
+            // Imposta il timestep reale della simulazione nel bridge per il server
+            simulationBridgeInterface.setCurrentSimTime(simTime);
+        }
+    }
+
+    /**
+     * Aggiorna lo SoC e l'energia in erogazione delle colonnine
+     * 
+     * @param simTime Tempo di simulazione attuale
+     */
+    public void updateCharging(double simTime){
+        try {
+            // Resetta l'energia in erogazione da tutte le colonnine all'inizio del timestep
+            simulationBridgeInterface.resetChargersCurrentEnergy();
+            // Aggiorna SoC dell'auto attraverso il bridge
+            simulationBridgeInterface.updateEvFleetSoC(getElectricFleetFromQSim());
+            // Aggiorna l'energia che le colonnine stanno erogando in questo timestep
+            simulationBridgeInterface.updateChargersEnergyDelivering();
+        } catch (Exception e) {
+            log.error("[TimeStepMonitor] Errore aggiornamento stato veicoli: {}", e.getMessage());
         }
     }
 
@@ -64,4 +76,5 @@ public class TimeStepSocMonitor implements MobsimBeforeSimStepListener, MobsimIn
             return null;
         }
     }
+    
 }

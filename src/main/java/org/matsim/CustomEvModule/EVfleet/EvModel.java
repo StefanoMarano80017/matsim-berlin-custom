@@ -34,7 +34,11 @@ public class EvModel {
 
     // --- Dati dinamici ---
     private double currentSoc;           
-    private double currentEnergyJoules;  
+    private double currentEnergyJoules; 
+    
+    private double lastSoc;
+    private double lastEnergyJoules;
+
     private double distanceTraveledKm;   
     private State state;                 
     private String linkId;               
@@ -105,11 +109,19 @@ public class EvModel {
         this.distanceTraveledKm = 0.0;
         this.state = State.STOPPED;
         this.dirty = true; // segnala come modificato inizialmente
+        this.lastSoc = currentSoc;
+        this.lastEnergyJoules = currentEnergyJoules;
     }
 
     // --- Aggiornamento dinamico ---
     public void updateDynamicState(double soc, double energyJoules) {
         if (this.currentSoc != soc || this.currentEnergyJoules != energyJoules) {
+            /*
+            * Salvo il vecchio così posso calcolare il delta e quindi l'erogazione
+            */
+            this.lastSoc = currentSoc;
+            this.lastEnergyJoules = currentEnergyJoules;
+
             this.currentSoc = soc;
             this.currentEnergyJoules = energyJoules;
             this.dirty = true;
@@ -171,6 +183,8 @@ public class EvModel {
     public String getCarBodyType()              { return carBodyType; }
     public double getCurrentSoc()               { return currentSoc; }
     public double getCurrentEnergyJoules()      { return currentEnergyJoules; }
+    public double getLastSoc()                  { return lastSoc;}
+    public double getLastEnergyJoules()         { return lastEnergyJoules;}
     public double getDistanceTraveledKm()       { return distanceTraveledKm; }
     public State getState()                     { return state; }
     public String getLinkId()                   { return linkId; }

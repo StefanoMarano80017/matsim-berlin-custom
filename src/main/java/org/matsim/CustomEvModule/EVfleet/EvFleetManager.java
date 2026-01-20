@@ -151,19 +151,31 @@ public class EvFleetManager{
     // ----------------------------------------------------
     // SIMULATION UPDATE 
     // ----------------------------------------------------
+    record chargeUpdate(Double soc, Double Charge){}
+
     public void updateSoc(ElectricFleet electricFleet) {
         if (electricFleet == null) throw new IllegalArgumentException("ElectricFleet is null");
         for (EvModel evModel : fleet.values()) {
-            Id<Vehicle> qsimId = Id.create(evModel.getVehicleId().toString() + "_car", Vehicle.class);
-            var ev = electricFleet.getElectricVehicles().get(qsimId);
-            if (ev != null) {
+            chargeUpdate up = GetChargeFromFleet(electricFleet, evModel);
+            if(up != null){                                       
                 evModel.updateDynamicState(
-                    ev.getBattery().getSoc(),
-                    ev.getBattery().getCharge()
+                    up.soc(),
+                    up.Charge()
                 );
             }
         }
     }
+
+    private chargeUpdate GetChargeFromFleet(
+        ElectricFleet electricFleet, 
+        EvModel evModel
+    ){
+        Id<Vehicle> qsimId = Id.create(evModel.getVehicleId().toString() + "_car", Vehicle.class);
+        var ev = electricFleet.getElectricVehicles().get(qsimId);
+        if (ev == null) return null;
+        return new chargeUpdate(ev.getBattery().getSoc(), ev.getBattery().getCharge());
+    }
+
 
     // ----------------------------------------------------
     // GETTERS
@@ -179,5 +191,6 @@ public class EvFleetManager{
     public EvModel getVehicle(Id<Vehicle> vehicleId) {
         return fleet.get(vehicleId);
     }
+
 
 }

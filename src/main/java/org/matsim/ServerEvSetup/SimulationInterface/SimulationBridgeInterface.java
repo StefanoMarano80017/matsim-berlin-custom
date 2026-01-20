@@ -1,12 +1,5 @@
 package org.matsim.ServerEvSetup.SimulationInterface;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import org.matsim.CustomEvModule.Hub.ChargingHub;
-import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.api.core.v01.Id;
 import org.matsim.contrib.ev.infrastructure.Charger;
 import org.matsim.core.controler.events.IterationStartsEvent;
@@ -14,69 +7,35 @@ import org.matsim.core.controler.listener.IterationStartsListener;
 import org.matsim.vehicles.Vehicle;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
-import org.springboot.DTO.WebSocketDTO.payload.ChargerStatus;
-import org.springboot.DTO.WebSocketDTO.payload.HubStatusPayload;
+import org.matsim.CustomEvModule.Hub.HubManager;
 import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
-import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springframework.util.CollectionUtils;
 
 public class SimulationBridgeInterface implements IterationStartsListener {
 
-    private final HubManager     hubManager;
-    private final EvFleetManager evFleetManager;
-
-    private volatile boolean simulationStarted = false;
+    private final SimulationLifecycleService lifecycle;
+    private final TimeStepStatusService statusService;
+    private final DataCommandService dataCommands;
     
-    /**
-     * Timestep REALE della simulazione MATSim.
-     * Aggiornato dai Monitoring quando ricevono gli eventi da QSim.
-     */
-    private volatile double currentSimTime = 0.0;
-
-    public SimulationBridgeInterface(HubManager hubManager, EvFleetManager evFleetManager) {
-        this.hubManager      = hubManager;
-        this.evFleetManager  = evFleetManager;
+    public SimulationBridgeInterface(
+        EvFleetManager evFleetManager,
+        HubManager hubManager
+    ) {
+        this.lifecycle      = new SimulationLifecycleService();
+        this.statusService  = new TimeStepStatusService(hubManager, evFleetManager);
+        this.dataCommands   = new DataCommandService(evFleetManager, hubManager);
     }
 
-    /**
-     * Riceve i modelli EV pre-generati dal server e li registra nel manager.
-     * Questo metodo è chiamato prima della simulazione.
-     * 
-     * @param evModels Lista di EvModel già generati dal server
-     */
-    public void initializeEvModels(List<EvModel> evModels) {
-        if (evModels == null || evModels.isEmpty()) {
-            throw new IllegalArgumentException("evModels cannot be null or empty");
-        }
-        evFleetManager.registerEvModels(evModels);
-    }
-
-    /**
-     * Riceve gli hub di ricarica pre-generati dal server e li registra nel manager.
-     * Questo metodo è chiamato prima della simulazione.
-     * 
-     * Nota: Accetta i modelli di dominio puri (HubSpecDto) generati dal server,
-     * NON le specifiche MATSim. La registrazione nell'infrastruttura viene fatta
-     * dal manager.
-     * 
-     * @param hubSpecs Lista di specifiche hub (modelli di dominio server)
-     */
-    public void initializeChargingHubsFromServerModels(List<HubSpecDto> hubSpecs) {
-        if (hubSpecs == null || hubSpecs.isEmpty()) {
-            throw new IllegalArgumentException("hubSpecs cannot be null or empty");
-        }
-        hubManager.registerChargingHubsFromSpecs(hubSpecs);
-    }
-
+    /*
+    *    LIFECYCLE 
+    */
     @Override
     public void notifyIterationStarts(IterationStartsEvent event) {
-        simulationStarted = true; // la simulazione è iniziata
+        lifecycle.setsimulationStarted(true);
     }
 
     // Metodo per sapere se la simulazione è partita
     public boolean isSimulationStarted() {
-        return simulationStarted;
+        return lifecycle.isSimulationStarted();
     }
 
     /**
@@ -86,7 +45,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @param simTime Il tempo di simulazione reale in secondi
      */
     public void setCurrentSimTime(double simTime) {
-        this.currentSimTime = simTime;
+       lifecycle.setCurrentSimTime(simTime);
     }
 
     /**
@@ -95,76 +54,23 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @return Il tempo di simulazione reale in secondi
      */
     public double getCurrentSimTime() {
-        return currentSimTime;
+        return lifecycle.getCurrentSimTime();
     }
 
+    /* 
+    *    STATUS 
+    */
     public TimeStepPayload GetTimeStepStatus(boolean fullSnapshot) {
-        // Non restituire nulla se la simulazione non è partita
-        if (!simulationStarted) return null;
-
-        // --- VEICOLI ---
-        List<VehicleStatus> vehicleStatuses = evFleetManager.getFleet().values().stream()
-                .filter(v -> fullSnapshot || v.isDirty())
-                .map(this::mapEvModelToVehicleStatus)
-                .collect(Collectors.toList());
-
-        // --- HUB ---
-        List<HubStatusPayload> hubStatuses = hubManager.getAllHubs().stream()
-                .filter(hub -> fullSnapshot || hub.isDirty())
-                .map(hub -> {
-                    Map<String, ChargerStatus> chargerStates = new HashMap<>();
-                    
-                    hub.getChargers().forEach(chId -> {
-                        String evId = hub.getEvOccupyingCharger(chId);
-                        boolean occupied = evId != null;
-
-                        chargerStates.put(
-                            chId.toString(),
-                            new ChargerStatus(
-                                chId.toString(),
-                                occupied,
-                                hub.getChargerEnergy(chId),
-                                occupied ? evId : null
-                            )
-                        );
-                    });
-                    
-                    return new HubStatusPayload(
-                            hub.getId(),
-                            hub.getTotalEnergy(),
-                            hub.getOccupancy(),
-                            chargerStates
-                    );
-                })
-                .collect(Collectors.toList());
-
-        if (!CollectionUtils.isEmpty(vehicleStatuses) || !CollectionUtils.isEmpty(hubStatuses)) {
-            return new TimeStepPayload(null, vehicleStatuses, hubStatuses);
-        }
-
-        return null;
+       return statusService.buildPayload(fullSnapshot);
     }
 
-    // --- MAPPING VEICOLI ---
-    private VehicleStatus mapEvModelToVehicleStatus(EvModel v) {
-        return new VehicleStatus(
-                v.getVehicleId().toString(),
-                v.getCurrentSoc(),
-                v.getDistanceTraveledKm(),
-                v.getCurrentEnergyJoules(),
-                v.getState() != null ? v.getState().toString() : "NULL"
-        );
-    }
-
-    public void resetDirty() {
-        evFleetManager.getFleet().values().forEach(EvModel::resetDirty);
-        hubManager.resetDirtyFlags();
+    public void resetDirty(){
+        statusService.resetDirty();
     }
 
     /* ============================================================
      * Centralized operations on managers (for Monitoring classes)
      * ============================================================ */
-
     /**
      * Update SoC of all EV vehicles.
      * Called by TimeStepSocMonitor instead of accessing evFleetManager directly.
@@ -172,9 +78,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @param electricFleet The electric fleet to use for updates
      */
     public void updateEvFleetSoC(org.matsim.contrib.ev.fleet.ElectricFleet electricFleet) {
-        if (electricFleet != null) {
-            evFleetManager.updateSoc(electricFleet);
-        }
+        dataCommands.updateFleetSoc(electricFleet);
     }
 
     /**
@@ -185,10 +89,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @param state The new state (IDLE, MOVING, PARKED, CHARGING, etc.)
      */
     public void updateEvState(Id<Vehicle> vehicleId, EvModel.State state) {
-        EvModel vehModel = evFleetManager.getVehicle(vehicleId);
-        if (vehModel != null) {
-            vehModel.setState(state);
-        }
+        dataCommands.updateEvState(vehicleId, state);
     }
 
     /**
@@ -203,15 +104,7 @@ public class SimulationBridgeInterface implements IterationStartsListener {
             Id<Vehicle> vehicleId,
             double simTime
     ) {
-        try {
-            String hubId = hubManager.getHubIdForCharger(chargerId);
-            ChargingHub hub = hubManager.getHub(hubId);
-            if (hub != null) {
-                hub.incrementOccupancy(chargerId, vehicleId.toString(), 0.0); // energia a start=0
-            }
-        } catch (Exception e) {
-            // Hub or charger not found - ignore
-        }
+       dataCommands.handleChargingStart(chargerId, vehicleId.toString());
     }
 
     /**
@@ -225,15 +118,26 @@ public class SimulationBridgeInterface implements IterationStartsListener {
             Id<Charger> chargerId,
             double energy
     ) {
-        try {
-            String hubId = hubManager.getHubIdForCharger(chargerId);
-            ChargingHub hub = hubManager.getHub(hubId);
-            if (hub != null) {
-                hub.decrementOccupancy(chargerId, energy);
-            }
-        } catch (Exception e) {
-            // Hub or charger not found - ignore
-        }
+        dataCommands.handleChargingEnd(chargerId, energy);
+    }
+
+    /**
+     * Resetta l'energia in erogazione di tutte le colonnine di tutti gli hub.
+     * Deve essere chiamato all'inizio di ogni timestep.
+     */
+    public void resetChargersCurrentEnergy() {
+        dataCommands.resetCurrentEnergy();
+    }
+
+    /**
+     * Aggiorna l'energia che le colonnine stanno erogando in questo timestep.
+     * Legge lo stato della flotta EV dalla simulazione e calcola quanta energia
+     * ogni colonnina sta erogando.
+     * 
+     * @param electricFleet La flotta EV da cui leggere i dati
+     */
+    public void updateChargersEnergyDelivering() {
+        dataCommands.updateEnergyDelivering();
     }
 
 }
