@@ -81,7 +81,7 @@ public class EvFleetManager{
             vehicleFactory.createMatsimVehicle(
                 model,
                 scenario.getVehicles(), 
-                Set.of("default", "a", "b")
+                Set.of("DC", "AC", "CCS")
             )
         );
         

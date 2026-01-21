@@ -2,14 +2,35 @@ package org.springboot.DTO.SimulationDTO;
 
 import java.util.Set;
 
+/**
+ * DTO per un charger con supporto a tipo misto e potenza variabile.
+ * 
+ * Campi:
+ * - chargerId: ID univoco della colonnina
+ * - chargerType: Tipo di charger (AC, CCS, etc.)
+ * - plugPowerKw: Potenza in kW
+ * - availablePlugs: Set di tipi di plug disponibili (legacy, mantenuto per compatibilità)
+ */
 public class ChargerDTO {
 
     private String chargerId;
-    private Set<String> availablePlugs;
+    private String chargerType;
+    private double plugPowerKw;
 
-    public ChargerDTO(String chargerId, Set<String> availablePlugs) {
+    /**
+     * Costruttore con supporto a charger di tipo misto.
+     */
+    public ChargerDTO(String chargerId, String chargerType, double plugPowerKw) {
         this.chargerId = chargerId;
-        this.availablePlugs = availablePlugs;
+        this.chargerType = chargerType;
+        this.plugPowerKw = plugPowerKw;
+    }
+
+    /**
+     * Costruttore legacy per compatibilità.
+     */
+    public ChargerDTO(String chargerId) {
+        this.chargerId = chargerId;
     }
 
     public String getChargerId() {
@@ -20,11 +41,20 @@ public class ChargerDTO {
         this.chargerId = chargerId;
     }
 
-    public Set<String> getAvailablePlugs() {
-        return availablePlugs;
+    public String getChargerType() {
+        return chargerType;
     }
 
-    public void setAvailablePlugs(Set<String> availablePlugs) {
-        this.availablePlugs = availablePlugs;
+    public void setChargerType(String chargerType) {
+        this.chargerType = chargerType;
     }
+
+    public double getPlugPowerKw() {
+        return plugPowerKw;
+    }
+
+    public void setPlugPowerKw(double plugPowerKw) {
+        this.plugPowerKw = plugPowerKw;
+    }
+
 }

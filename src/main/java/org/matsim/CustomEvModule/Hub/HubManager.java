@@ -56,12 +56,13 @@ public class HubManager {
 
     /**
      * Registra i ChargingHub pre-generati dal server a partire da HubSpecDto.
+     * Supporta colonnine di tipo misto (AC, CCS, etc.) con potenze variabili sullo stesso hub.
      * 
      * Questo metodo:
      * 1. Riceve i modelli di dominio puri (HubSpecDto) dal server
      * 2. Traduce ogni ChargerSpecDto in ImmutableChargerSpecification (MATSim)
      * 3. Registra le specifiche nell'infrastruttura MATSim
-     * 4. Crea i ChargingHub e li registra in questo manager
+     * 4. Crea i ChargingHub con plug types misti e li registra in questo manager
      * 
      * @param hubSpecs Lista di specifiche hub (modelli di dominio server)
      */
@@ -88,6 +89,9 @@ public class HubManager {
             // Crea il ChargingHub
             ChargingHub hub = new ChargingHub(hubId, linkId);
 
+            // Raccogli i tipi di charger nel hub (per supportare colonnine miste)
+            Set<String> hubChargerTypes = new HashSet<>();
+
             // Per ogni charger spec, crea la specifica MATSim e registrala
             for (ChargerSpecDto chargerSpec : hubSpec.getChargers()) {
                 String chargerId = chargerSpec.getChargerId();
@@ -100,6 +104,8 @@ public class HubManager {
                 // Crea gli attributi per MATSim
                 Attributes attrs = new AttributesImpl();
                 attrs.putAttribute("hubId", hubId);
+                attrs.putAttribute("chargerType", chargerType);
+                attrs.putAttribute("plugPowerKw", powerKw);
 
                 // Crea la specifica del charger per MATSim (in Watt)
                 ImmutableChargerSpecification chargerSpecMatSim = ImmutableChargerSpecification.newBuilder()
@@ -114,19 +120,26 @@ public class HubManager {
                 // Registra la specifica nell'infrastruttura
                 infraSpec.addChargerSpecification(chargerSpecMatSim);
 
-                // Registra il charger nel hub
+                // Aggiungi il tipo alla lista dei tipi dell'hub
+                hubChargerTypes.add(chargerType);
+
+                // Registra il charger nel hub con il suo tipo di plug
                 hub.addCharger(chargerIdMatSim, Set.of(chargerType));
 
                 // Registra il mapping charger -> hub
                 charger2hub.put(chargerIdMatSim, hubId);
+                
+                log.debug("[HubManager] Registered charger {} (type: {}, power: {} kW) in hub {}", 
+                    chargerId, chargerType, powerKw, hubId);
             }
 
             // Registra l'hub nel manager
             hubs.put(hubId, hub);
-            log.debug("[HubManager] Registered hub {} with {} chargers", hubId, hubSpec.getChargers().size());
+            log.debug("[HubManager] Registered hub {} with {} chargers of types {}", 
+                hubId, hubSpec.getChargers().size(), hubChargerTypes);
         }
 
-        log.info("[HubManager] Successfully registered all hub specifications");
+        log.info("[HubManager] Successfully registered all hub specifications with mixed charger types support");
     }
 
     /**

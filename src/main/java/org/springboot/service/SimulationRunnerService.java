@@ -123,5 +123,6 @@ public class SimulationRunnerService {
         simulationPublisherService.sendSimulationMessage("SIMULATION_START");
         scenarioApp.run();
         simulationPublisherService.sendSimulationMessage("SIMULATION_END");
+        simulationPublisherService.stopPublisher();
     }
 }

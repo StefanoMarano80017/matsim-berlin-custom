@@ -11,11 +11,13 @@ import org.springboot.service.GenerationService.DTO.HubSpecDto;
 /**
  * Mapper per convertire HubSpecDto (modello puro lato server)
  * a HubDTO (DTO di output per API REST).
+ * 
+ * Supporta charger di tipo misto con potenze variabili.
  */
 public class HubSpecMapper {
 
     /**
-     * Converte HubSpecDto → HubDTO
+     * Converte HubSpecDto → HubDTO con supporto a charger di tipo misto.
      */
     public static HubDTO toHubDTO(HubSpecDto hubSpec) {
         if (hubSpec == null) {
@@ -35,7 +37,7 @@ public class HubSpecMapper {
     }
 
     /**
-     * Converte ChargerSpecDto → ChargerDTO
+     * Converte ChargerSpecDto → ChargerDTO con tipo di charger e potenza.
      */
     public static ChargerDTO toChargerDTO(ChargerSpecDto chargerSpec) {
         if (chargerSpec == null) {
@@ -44,7 +46,8 @@ public class HubSpecMapper {
 
         return new ChargerDTO(
             chargerSpec.getChargerId(),
-            null
+            chargerSpec.getChargerType(),
+            chargerSpec.getPlugPowerKw()
         );
     }
 }

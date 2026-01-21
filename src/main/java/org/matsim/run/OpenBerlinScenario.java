@@ -51,8 +51,6 @@ import com.google.inject.name.Names;
 *  CLI
 */
 import picocli.CommandLine;
-import playground.vsp.ev.UrbanEVConfigGroup;
-
 
 @CommandLine.Command(header = ":: Open Berlin Scenario ::", version = OpenBerlinScenario.VERSION, mixinStandardHelpOptions = true, showDefaultValues = true)
 public class OpenBerlinScenario extends MATSimApplication {
@@ -230,8 +228,9 @@ public class OpenBerlinScenario extends MATSimApplication {
         // --- Creazione EV config---
         EvConfigGroup evConfig = ConfigUtils.addOrGetModule(config, EvConfigGroup.class);
         evConfig.chargersFile = "fake_chargers.xml"; // Placeholder
-        UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
-        urbanEVConfig.setCriticalSOC(0.9);
+        //UrbanEVConfigGroup urbanEVConfig = ConfigUtils.addOrGetModule(config, UrbanEVConfigGroup.class);
+        //urbanEVConfig.setCriticalSOC(0.9);
+        evConfig.chargeTimeStep = 5; //Timestep di avanzamneto SoC durante la ricarica
         // Register EV charging activities
         config.scoring().addActivityParams(
             new ActivityParams("car charging")

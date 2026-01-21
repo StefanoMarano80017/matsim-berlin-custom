@@ -3,6 +3,8 @@ package org.matsim.CustomEvModule;
 *  Standard libs
 */
 import org.matsim.api.core.v01.Id;
+import org.matsim.contrib.ev.charging.ChargingPower;
+import org.matsim.contrib.ev.charging.FastThenSlowCharging;
 import org.matsim.contrib.ev.discharging.AuxEnergyConsumption;
 import org.matsim.contrib.ev.discharging.DriveEnergyConsumption;
 import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
@@ -41,15 +43,14 @@ public class CustomEvModule extends AbstractModule {
 
     private static final Logger log = LogManager.getLogger(CustomEvModule.class);
 
-    private final HubManager     hubManager;
-    private final EvFleetManager evFleetManager;
-    private final SimulationBridgeInterface bridge;
+    private final HubManager                          hubManager;
+    private final EvFleetManager                      evFleetManager;
+    private final SimulationBridgeInterface           bridge;
     private final ChargingInfrastructureSpecification infraSpec;
 
     private final ConfigRun config;
-
-    private final boolean debug_link;
-    private final boolean realtime;
+    private final boolean   debug_link;
+    private final boolean   realtime;
 
     public CustomEvModule(
         SimulationBridgeInterface bridge,
@@ -114,6 +115,11 @@ public class CustomEvModule extends AbstractModule {
 				addMobsimScopeEventHandlerBinding().to( TargetSocChargingHandler.class);
 			}
 		});
+
+        /*
+        *  Modello di ricarica della charging station
+        */
+        bind(ChargingPower.Factory.class).toInstance(ev -> new FastThenSlowCharging(ev));
 
         /*
         *   Logger dei percorsi dei veicoli

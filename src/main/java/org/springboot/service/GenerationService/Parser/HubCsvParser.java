@@ -16,7 +16,7 @@ import org.springboot.service.GenerationService.DTO.ChargerSpecDto;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
 
 /**
- * Parser CSV per hub di ricarica lato server.
+ * Parser CSV per hub di ricarica lato server con supporto colonnine miste.
  * 
  * Responsabilità:
  * - leggere il file CSV
@@ -25,8 +25,12 @@ import org.springboot.service.GenerationService.DTO.HubSpecDto;
  * 
  * NON dipende da MATSim, solo da modelli di dominio server.
  * 
- * CSV format: hubId,linkId,nColonnine,type,power
- * Example: hub1,link123,2,default,11
+ * CSV format: hubId,linkId,type,power
+ * Una riga per colonnina. Supporta colonnine di tipo misto (AC, CCS, etc.) con potenze variabili.
+ * Example:
+ *   hub1,link123,AC,11.0
+ *   hub1,link123,CCS,50.0
+ *   hub2,link456,AC,22.0
  */
 public class HubCsvParser {
 
@@ -34,6 +38,7 @@ public class HubCsvParser {
 
     /**
      * Parsa un file CSV di hub e genera una lista di HubSpecDto.
+     * Supporta colonnine di tipo misto sullo stesso hub.
      * 
      * @param csvResource Risorsa CSV con i dati degli hub
      * @return Lista di HubSpecDto parsed
@@ -69,31 +74,31 @@ public class HubCsvParser {
     }
 
     /**
-     * Parsa una singola riga CSV e aggiunge il charger all'hub.
+     * Parsa una singola riga CSV (una colonnina) e aggiunge il charger all'hub.
+     * Supporta colonnine di tipo misto.
      * 
-     * @param line Riga CSV: hubId,linkId,nColonnine,type,power
+     * @param line Riga CSV: hubId,linkId,type,power
      * @param lineNumber Numero di riga (per log)
      * @param hubs Mappa di hub (viene aggiornata)
      */
     private void parseLine(String line, int lineNumber, Map<String, HubSpecDto> hubs) {
         String[] parts = line.split("[,\t]", -1);
         
-        if (parts.length < 5) {
-            throw new IllegalArgumentException("Insufficient columns (expected 5, got " + parts.length + ")");
+        if (parts.length < 4) {
+            throw new IllegalArgumentException("Insufficient columns (expected 4, got " + parts.length + ")");
         }
 
         String hubId = parts[0].trim();
         String linkId = parts[1].trim();
-        int nChargers = parseIntSafe(parts[2], 1);
-        String chargerType = parts[3].trim();
-        double powerKw = parseDoubleSafe(parts[4], 11.0);
+        String chargerType = parts[2].trim();
+        double powerKw = parseDoubleSafe(parts[3], 11.0);
 
         if (hubId.isEmpty() || linkId.isEmpty()) {
             throw new IllegalArgumentException("hubId or linkId is empty");
         }
 
-        if (nChargers <= 0) {
-            throw new IllegalArgumentException("nChargers must be > 0");
+        if (chargerType.isEmpty()) {
+            throw new IllegalArgumentException("chargerType is empty");
         }
 
         if (powerKw <= 0) {
@@ -103,29 +108,27 @@ public class HubCsvParser {
         // Crea o recupera l'hub
         HubSpecDto hub = hubs.computeIfAbsent(hubId, k -> new HubSpecDto(hubId, linkId));
 
-        // Aggiunge i charger all'hub
-        for (int i = 0; i < nChargers; i++) {
-            String chargerId = hubId + "_col" + (i + 1);
-            ChargerSpecDto charger = new ChargerSpecDto(
-                chargerId,
-                linkId,
-                chargerType,
-                powerKw,
-                1 // plugCount
-            );
-            hub.addCharger(charger);
+        // Valida che il linkId sia coerente per lo stesso hub
+        if (!hub.getLinkId().equals(linkId)) {
+            throw new IllegalArgumentException("Hub " + hubId + " has inconsistent linkIds: " + 
+                hub.getLinkId() + " vs " + linkId);
         }
 
-        log.debug("[HubCsvParser] Parsed hub {} with {} chargers", hubId, nChargers);
-    }
+        // Genera ID univoco per la colonnina (incrementale)
+        int chargerIndex = hub.getChargers().size() + 1;
+        String chargerId = hubId + "_col" + chargerIndex;
 
-    private int parseIntSafe(String s, int fallback) {
-        try {
-            return Integer.parseInt(s.trim());
-        } catch (Exception e) {
-            log.warn("[HubCsvParser] Failed to parse int '{}', using fallback {}", s, fallback);
-            return fallback;
-        }
+        ChargerSpecDto charger = new ChargerSpecDto(
+            chargerId,
+            linkId,
+            chargerType,
+            powerKw,
+            1 // plugCount
+        );
+        hub.addCharger(charger);
+
+        log.debug("[HubCsvParser] Parsed charger {} (type: {}, power: {} kW) for hub {}", 
+            chargerId, chargerType, powerKw, hubId);
     }
 
     private double parseDoubleSafe(String s, double fallback) {
