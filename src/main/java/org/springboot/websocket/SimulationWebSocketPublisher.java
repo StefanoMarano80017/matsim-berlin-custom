@@ -24,7 +24,6 @@ import com.google.gson.JsonSerializer;
 public class SimulationWebSocketPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(SimulationWebSocketPublisher.class);
-
     private final Gson gson;
     private final SimulationWebSocketHandler wsHandler;
 

@@ -94,10 +94,11 @@ public class HubManager {
 
             // Per ogni charger spec, crea la specifica MATSim e registrala
             for (ChargerSpecDto chargerSpec : hubSpec.getChargers()) {
-                String chargerId = chargerSpec.getChargerId();
+                
+                String chargerId   = chargerSpec.getChargerId();
                 String chargerType = chargerSpec.getChargerType();
-                double powerKw = chargerSpec.getPlugPowerKw();
-                int plugCount = chargerSpec.getPlugCount();
+                double powerKw     = chargerSpec.getPlugPowerKw();
+                int plugCount      = chargerSpec.getPlugCount();
 
                 Id<Charger> chargerIdMatSim = Id.create(chargerId, Charger.class);
 
@@ -189,6 +190,9 @@ public class HubManager {
         return hubs.get(hubId);
     }
 
+    /* =================================
+    *  HUB API
+     ================================ */
     public Collection<ChargingHub> getChargingHubs() {
         return hubs.values();
     }
@@ -213,6 +217,83 @@ public class HubManager {
 
     public Collection<ChargingHub> getAllHubs() {
         return Collections.unmodifiableCollection(hubs.values());
+    }
+
+    /* =================================
+    *  Chargers API
+     ================================ */
+    /**
+     * Restituisce tutti i charger appartenenti a tutti gli hub presenti su un dato link.
+     *
+     * @param linkId ID del link
+     * @return Set di Id<Charger> presenti sul link
+     */
+    public Set<Id<Charger>> getAllChargersOnLink(Id<Link> linkId) {
+        return hubs.values().stream()
+                .filter(hub -> hub.getLink().equals(linkId))
+                .flatMap(hub -> hub.getChargersId().stream())
+                .collect(Collectors.toSet());
+    }
+
+    public Set<Id<Charger>> getAllCompatibleChargersOnLink(
+        Id<Link> linkId,
+        ImmutableList<String> compatibleTypes
+    ) {
+        return hubs.values().stream()
+                // hub sul link
+                .filter(hub -> hub.getLink().equals(linkId))
+                // prendi tutte le ChargerUnit degli hub
+                .flatMap(hub -> hub.getChargerUnits().stream())
+                // solo attivi 
+                .filter(charger -> charger.isActive())
+                // solo charger liberi
+                .filter(charger -> !charger.isOccupied())
+                // almeno un plug compatibile
+                .filter(charger ->charger.getPlugs().stream().anyMatch(compatibleTypes::contains))
+                // ritorna gli ID
+                .map(ChargerUnit::getChargerId)
+                .collect(Collectors.toSet());
+    }
+
+    public List<Charger> getAllChargerObjectsOnLink(
+        Id<Link> linkId,
+        ChargingInfrastructure chargingInfrastructure
+    ) {
+        return getAllChargersOnLink(linkId).stream()
+                .map(id -> chargingInfrastructure.getChargers().get(id))
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    public List<Charger> getAllCompatibleChargerObjectsOnLink(
+        Id<Link> linkId,
+        ImmutableList<String> compatibleTypes,
+        ChargingInfrastructure chargingInfrastructure
+    ){
+        return getAllCompatibleChargersOnLink(linkId, compatibleTypes).stream()
+                .map(id -> chargingInfrastructure.getChargers().get(id))
+                .filter(Objects::nonNull)
+                .toList();               
+    }
+
+    //Attiva disattiva una colonnina 
+    public void setChargerActive(Id<Charger> chargerId, boolean active) {
+        String hubId = charger2hub.get(chargerId);
+        if (hubId == null) {
+            throw new IllegalArgumentException("Charger senza hub: " + chargerId);
+        }
+        ChargingHub hub = hubs.get(hubId);
+        hub.setChargerActive(chargerId, active);
+        log.info("[HubManager] Stato del charger modificato correttamente");
+    }
+
+    //Attiva disattiva un intero hub 
+    public void setHubActive(String hubId, boolean active) {
+        ChargingHub hub = hubs.get(hubId);
+        if (hub == null) {
+            throw new IllegalArgumentException("Hub non trovato: " + hubId);
+        }
+        hub.setAllChargersActive(active);
     }
 
     // ---------------- Dirty flags ----------------

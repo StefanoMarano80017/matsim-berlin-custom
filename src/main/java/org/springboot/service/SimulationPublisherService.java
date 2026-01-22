@@ -33,9 +33,9 @@ public class SimulationPublisherService {
     /* ============================================================
      * Dependencies
      * ============================================================ */
-    private final SimulationDataExtractor dataExtractor;
-    private final SimulationWebSocketPublisher wsPublisher;
-    private final ThreadPoolTaskScheduler taskScheduler;
+    private final SimulationDataExtractor       dataExtractor;
+    private final SimulationWebSocketPublisher  wsPublisher;
+    private final ThreadPoolTaskScheduler       taskScheduler;
 
     /* ============================================================
      * Scheduler configuration

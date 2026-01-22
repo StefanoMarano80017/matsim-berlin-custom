@@ -1,7 +1,5 @@
 package org.springboot.DTO.SimulationDTO;
 
-import java.util.Set;
-
 /**
  * DTO per un charger con supporto a tipo misto e potenza variabile.
  * 
@@ -10,6 +8,7 @@ import java.util.Set;
  * - chargerType: Tipo di charger (AC, CCS, etc.)
  * - plugPowerKw: Potenza in kW
  * - availablePlugs: Set di tipi di plug disponibili (legacy, mantenuto per compatibilità)
+ * - isActive: se è attivo o disattivato il charger
  */
 public class ChargerDTO {
 

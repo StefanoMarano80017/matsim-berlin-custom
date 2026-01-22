@@ -6,8 +6,9 @@ import jakarta.validation.constraints.AssertTrue;
 @Schema(description = "Stato di un singolo charger in un hub")
 public class ChargerStatus {
 
-    private String chargerId;
+    private String  chargerId;
     private boolean occupied;
+    private boolean active;
 
     /*
     *  valore cumulativo di energia distribuita
@@ -28,15 +29,17 @@ public class ChargerStatus {
     public ChargerStatus(
         String chargerId,
         boolean occupied, 
+        boolean active,
         double energy, 
         double charging_energy,
         String evId
     ) {
-        this.chargerId = chargerId;
-        this.occupied = occupied;
-        this.energy = energy;
+        this.chargerId  = chargerId;
+        this.occupied   = occupied;
+        this.active     = active;
+        this.energy     = energy;
+        this.evId       = evId;
         this.charging_energy = charging_energy;
-        this.evId = evId;
     }
 
     public String getChargerId() {
@@ -53,6 +56,14 @@ public class ChargerStatus {
 
     public void setOccupied(boolean occupied) {
         this.occupied = occupied;
+    }
+
+    public boolean isActive(){
+        return this.active;
+    }
+
+    public void setActive(boolean active){
+        this.active = active;
     }
 
     public double getEnergy() {

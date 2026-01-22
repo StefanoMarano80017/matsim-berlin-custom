@@ -93,6 +93,17 @@ public class SimulationBridgeInterface implements IterationStartsListener {
     }
 
     /**
+    *   Update the state of a single charging station.
+    *
+    *   @param chargerId
+    *   @param isActive
+    */
+    public void updateChargerState(String chargerId, boolean isActive){
+        Id<Charger> cId = Id.create(chargerId, Charger.class);
+        dataCommands.updateChargerState(cId, isActive);
+    }
+
+    /**
      * Handle charging start event for a vehicle at a charging hub.
      * 
      * @param chargerId The charger ID where charging starts
@@ -140,5 +151,6 @@ public class SimulationBridgeInterface implements IterationStartsListener {
         dataCommands.updateEnergyDelivering();
     }
 
+    
 }
 

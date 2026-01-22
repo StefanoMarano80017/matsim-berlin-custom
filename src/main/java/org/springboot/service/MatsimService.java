@@ -14,7 +14,6 @@ import org.springboot.service.GenerationService.ModelGenerationService;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,9 +25,13 @@ public class MatsimService {
     // ======= Dependencies =======
     @Autowired
     private ModelGenerationService modelGenerationService;
+
     @Autowired
     private SimulationRunnerService runnerService;
     
+    @Autowired
+    private SimulationUpdaterService updaterService;
+
     // ======= Generation state (server-side models) =======
     private volatile List<EvModel> generatedEvModels = null;
     private volatile List<HubSpecDto> generatedHubSpecs = null;
@@ -38,7 +41,6 @@ public class MatsimService {
     // =================================================
     /**
      * Avvia la simulazione in background.
-     * Verifica che flotta e hub siano stati generati prima.
      */
     public synchronized String runSimulationAsync(SimulationSettingsDTO settings) {
         if(generatedEvModels == null || generatedHubSpecs == null){
@@ -79,6 +81,13 @@ public class MatsimService {
         return runnerService.stop();
     }
 
+    public void updateChargerState(String chargerId, boolean isActive){
+        if(runnerService.isRunning()){
+            String Status = updaterService.setChargerState(runnerService.getCurrentSimulationBridge(), chargerId, isActive);
+            log.info("[MatsimService] Stato cambiato al charger: " + chargerId + "con esito: " + Status);
+        }
+    }
+
     // ===============================
     // ======= Generation API ========
     // ===============================
@@ -116,9 +125,7 @@ public class MatsimService {
     public String generateHubs(String csvResourceHub) {
         try {
             log.info("[GenerationAPI] Generating hubs from {}", csvResourceHub);
-            this.generatedHubSpecs = modelGenerationService.generateHubSpecifications(
-                new ClassPathResource(csvResourceHub)
-            );
+            this.generatedHubSpecs = modelGenerationService.generateHubSpecifications(new ClassPathResource(csvResourceHub));
             log.info("[GenerationAPI] Generated {} hub specifications", generatedHubSpecs.size());
             return "Hub generati: " + generatedHubSpecs.size() + " hub.";
         } catch (Exception e) {

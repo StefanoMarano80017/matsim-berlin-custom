@@ -1,5 +1,6 @@
 package org.springboot.controller;
 
+import org.springboot.DTO.SimulationDTO.ChargerStateDTO;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.GenerationRequestDTO;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
@@ -257,6 +258,16 @@ public class SimulationController {
             return ResponseEntity.noContent().build(); // 204 No Content
         }
         return ResponseEntity.ok(hubListDTO);
+    }
+
+    @Operation(summary = "Aggiorna lo stato di una colonnina di un hub durante la simulazione")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Colonnina aggiornata"),
+    })
+    @PostMapping("/ChargerState")
+    public ResponseEntity<?> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){
+        matsimService.updateChargerState(chargerStateDTO.getChargerId(), chargerStateDTO.getIsActive());
+        return ResponseEntity.ok(null);
     }
 
 }

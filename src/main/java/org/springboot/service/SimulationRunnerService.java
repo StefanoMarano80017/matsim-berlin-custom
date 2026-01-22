@@ -24,6 +24,7 @@ public class SimulationRunnerService {
     private Future<?> currentFuture = null;
     private SimulationState currentState = SimulationState.IDLE;
     private Exception lastException = null;
+    private SimulationBridgeInterface currentSimulationBridge = null;
 
     @Autowired
     private SimulationPublisherService simulationPublisherService;
@@ -50,6 +51,16 @@ public class SimulationRunnerService {
     }
 
     /**
+     * Restituisce l'interfaccia di simulazione attuale
+     */
+    public synchronized SimulationBridgeInterface getCurrentSimulationBridge() {
+        if (currentState != SimulationState.RUNNING) {
+            return null;
+        }
+        return currentSimulationBridge;
+    }
+
+    /**
      * Arresta la simulazione in esecuzione
      */
     public synchronized String stop() {
@@ -61,6 +72,7 @@ public class SimulationRunnerService {
                 currentFuture.cancel(true);
             }
             currentState = SimulationState.STOPPED;
+            currentSimulationBridge = null;
             lastException = null;
             return "Richiesta di interruzione inviata.";
         } catch (Exception e) {
@@ -89,11 +101,13 @@ public class SimulationRunnerService {
                 runSimulation(evModels, hubSpecs, config);
                 synchronized (SimulationRunnerService.this) {
                     currentState = SimulationState.COMPLETED;
+                    currentSimulationBridge = null;
                     log.info("Simulazione completata con successo");
                 }
             } catch (InterruptedException e) {
                 synchronized (SimulationRunnerService.this) {
                     currentState = SimulationState.STOPPED;
+                    currentSimulationBridge = null;
                     lastException = e;
                     log.warn("Simulazione interrotta", e);
                 }
@@ -101,6 +115,7 @@ public class SimulationRunnerService {
             } catch (Throwable t) {
                 synchronized (SimulationRunnerService.this) {
                     currentState = SimulationState.ERROR;
+                    currentSimulationBridge = null;
                     lastException = t instanceof Exception ? (Exception) t : new Exception(t);
                     log.error("Errore durante l'esecuzione della simulazione", t);
                 }
@@ -119,6 +134,11 @@ public class SimulationRunnerService {
     ) throws Exception {
         OpenBerlinScenario scenarioApp = new OpenBerlinScenario().withConfigRun(config);
         SimulationBridgeInterface Bridgeinterface = scenarioApp.SetupSimulationWithServerModels(evModels, hubSpecs);
+        
+        synchronized (this) {
+            currentSimulationBridge = Bridgeinterface;
+        }
+        
         simulationPublisherService.startPublisher(Bridgeinterface, config.publisherDirty(), config.publisherRateMs());
         simulationPublisherService.sendSimulationMessage("SIMULATION_START");
         scenarioApp.run();

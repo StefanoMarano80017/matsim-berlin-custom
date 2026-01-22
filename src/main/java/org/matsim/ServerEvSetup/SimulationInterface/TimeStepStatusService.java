@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
+import org.matsim.CustomEvModule.Hub.ChargerUnit;
 import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;
 import org.springboot.DTO.WebSocketDTO.payload.ChargerStatus;
@@ -62,19 +63,24 @@ public class TimeStepStatusService {
         );
     }
 
+    private ChargerStatus mapCharger(ChargerUnit  cu){
+        return new ChargerStatus(
+                    cu.getChargerId().toString(),
+                    cu.getOccupyingEvId() != null,
+                    cu.isActive(),
+                    cu.getCumulativeEnergyDelivered(),
+                    cu.getCurrentEnergyDelivering(),
+                    cu.getOccupyingEvId()
+                );
+    }
+
     private HubStatusPayload mapHub(ChargingHub hub) {
         Map<String, ChargerStatus> chargers = new HashMap<>();
 
         hub.getChargerUnits().forEach(cu -> {
             chargers.put(
                 cu.getChargerId().toString(),
-                new ChargerStatus(
-                    cu.getChargerId().toString(),
-                    cu.getOccupyingEvId() != null,
-                    cu.getCumulativeEnergyDelivered(),
-                    cu.getCurrentEnergyDelivering(),
-                    cu.getOccupyingEvId()
-                )
+                mapCharger(cu)
             );
         });
 

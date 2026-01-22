@@ -127,6 +127,23 @@ public class ChargingHub {
         chargerUnits.values().forEach(ChargerUnit::resetCurrentEnergyDelivering);
     }
 
+    public synchronized void setChargerActive(Id<Charger> chargerId, boolean active) {
+        ChargerUnit unit = getChargerUnit(chargerId);
+        if (unit == null) {
+            throw new IllegalArgumentException("Charger non presente nell'hub: " + chargerId);
+        }
+        unit.setActive(active);
+        dirty = true;
+    }
+
+    //attiva disattiva intero hub
+    public synchronized void setAllChargersActive(boolean active) {
+        chargerUnits.values().forEach(unit -> unit.setActive(active));
+        dirty = true;
+    }
+
+    // -------------------- ACCESSOR METHODS --------------------
+
     /**
      * Ottieni una ChargerUnit specifica
      * 
@@ -137,8 +154,6 @@ public class ChargingHub {
         return chargerUnits.get(chargerId);
     }
 
-    // -------------------- ACCESSOR METHODS --------------------
-    
     /**
      * Ritorna tutte le ChargerUnit dell'hub
      * 
@@ -155,8 +170,20 @@ public class ChargingHub {
      * 
      * @return Set immutabile degli ID
      */
-    public synchronized Set<Id<Charger>> getChargers() {
+    public synchronized Set<Id<Charger>> getChargersId() {
         return Collections.unmodifiableSet(new HashSet<>(chargerUnits.keySet()));
+    }
+
+    /**
+     * Ritorna tutti gli Id dei ChargerUnit attive dell'hub
+     * 
+     * @return Lista immutabile di ChargerUnit
+     */
+    public synchronized Set<Id<Charger>> getActiveChargersId() {
+        return   getChargerUnits().stream()
+                .filter(ChargerUnit::isActive)
+                .map(ChargerUnit::getChargerId)
+                .collect(Collectors.toSet());
     }
 
     /**

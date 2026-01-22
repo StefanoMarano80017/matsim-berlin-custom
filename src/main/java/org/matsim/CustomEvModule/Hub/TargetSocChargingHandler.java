@@ -52,9 +52,9 @@ public class TargetSocChargingHandler
         HubManager hubManager
     ) {
 		this.chargingInfrastructure = chargingInfrastructure;
-		this.electricFleet   = electricFleet;
-		this.strategyFactory = strategyFactory;
-		this.hubManager      = hubManager;
+		this.electricFleet          = electricFleet;
+		this.strategyFactory        = strategyFactory;
+		this.hubManager             = hubManager;
 	}
 
     @Override
@@ -65,24 +65,19 @@ public class TargetSocChargingHandler
     @Override
     public void handleEvent(ActivityStartEvent e) {
         if (!e.getActType().endsWith("car charging")) return;
+
         Id<Link> eventLink = e.getLinkId();
         if(eventLink == null) return;
+
         Id<Vehicle> vId     = lastVehicleUsed.get(e.getPersonId());
         if (vId == null) return;
+
         ElectricVehicle ev  = electricFleet.getElectricVehicles().get(vId);
         if (ev == null) return;
 
         double socTarget = readSocTarget(e.getPersonId());
 
-        List<Charger> compatibleChargers =
-            chargingInfrastructure.getChargers().values().stream()
-                .filter(
-                    c -> c.getLink().getId().equals(e.getLinkId())
-                )
-                .filter(c -> ev.getChargerTypes().contains(
-                    c.getSpecification().getChargerType()
-                ))
-                .toList();
+        List<Charger> compatibleChargers = hubManager.getAllCompatibleChargerObjectsOnLink(eventLink, ev.getChargerTypes(), chargingInfrastructure);
 
         if (compatibleChargers.isEmpty()) {
             log.info("[TargetSocChargingHandler] Veicolo {} Nessun charger compatibile sul link {}", vId, e.getLinkId());

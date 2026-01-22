@@ -23,6 +23,8 @@ public class ChargerUnit {
     private double currentEnergyDelivering = 0.0;
     private String occupyingEvId = null;
 
+    private boolean active = true;
+
     /**
      * Costruisce una unità charger
      * 
@@ -69,6 +71,10 @@ public class ChargerUnit {
         return occupyingEvId != null;
     }
 
+    public boolean isActive() {
+        return active;
+    }
+
     // ================== SETTER ==================
 
     /**
@@ -78,6 +84,9 @@ public class ChargerUnit {
      * @throws IllegalStateException se la colonnina è già occupata
      */
     public synchronized void setOccupyingEv(String evId) {
+        if (!active) {
+            throw new IllegalStateException("Charger disattivato: " + chargerId);
+        }
         if (occupyingEvId != null && !occupyingEvId.equals(evId)) {
             throw new IllegalStateException("Charger già occupato da: " + occupyingEvId);
         }
@@ -98,6 +107,10 @@ public class ChargerUnit {
      * @param energy Energia erogata in questo timestep
      */
     public synchronized void setCurrentEnergyDelivering(double energy) {
+        if (!active) {
+            this.currentEnergyDelivering = 0.0;
+            return;
+        }
         this.currentEnergyDelivering = energy;
     }
 
@@ -117,6 +130,16 @@ public class ChargerUnit {
     public synchronized void addCumulativeEnergyDelivered(double energy) {
         this.cumulativeEnergyDelivered += energy;
     }
+
+    public synchronized void setActive(boolean active) {
+        this.active = active;
+        // Se viene disattivato mentre è occupato → eccezione 
+        if (!active && occupyingEvId != null) {
+           throw new IllegalStateException("Charger disattivato disattivato mentre è occupato: " + chargerId);
+        }
+        resetCurrentEnergyDelivering();
+    }
+
 
     @Override
     public String toString() {

@@ -84,4 +84,9 @@ public class DataCommandService {
             })
         );
     }
+
+    public void updateChargerState(Id<Charger> chargerId, boolean active){
+        hubManager.setChargerActive(chargerId, active);
+    }
+
 }
