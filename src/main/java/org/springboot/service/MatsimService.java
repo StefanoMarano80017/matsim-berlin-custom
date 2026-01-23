@@ -1,6 +1,7 @@
 package org.springboot.service;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -12,8 +13,11 @@ import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.DTO.SimulationDTO.mapper.HubSpecMapper;
 import org.springboot.service.GenerationService.ModelGenerationService;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.SimulationState.SimulationState;
+import org.springboot.service.SimulationState.SimulationStateListener;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
+import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +36,9 @@ public class MatsimService {
     @Autowired
     private SimulationUpdaterService updaterService;
 
+    @Autowired
+    private SimulationPublisherService simulationPublisherService;
+
     // ======= Generation state (server-side models) =======
     private volatile List<EvModel> generatedEvModels = null;
     private volatile List<HubSpecDto> generatedHubSpecs = null;
@@ -42,7 +49,7 @@ public class MatsimService {
     /**
      * Avvia la simulazione in background.
      */
-    public synchronized String runSimulationAsync(SimulationSettingsDTO settings) {
+    public String runSimulationAsync(SimulationSettingsDTO settings) {
         if(generatedEvModels == null || generatedHubSpecs == null){
             String status = "Errore: ";
             if (generatedEvModels == null) status += "flotta non generata ";
@@ -50,6 +57,23 @@ public class MatsimService {
             return status;
         }
         ConfigRun config = buildConfigRun(settings);
+
+        runnerService.setSimulationStateListener(new SimulationStateListener() {
+            @Override
+            public void onSimulationStarted(SimulationBridgeInterface bridge) {
+                simulationPublisherService.sendSimulationMessage("SIMULATION_START");
+                simulationPublisherService.startPublisher(
+                    bridge, config.publisherDirty(), config.publisherRateMs()
+                );
+            }
+
+            @Override
+            public void onSimulationEnded() {
+                simulationPublisherService.stopPublisher();
+                simulationPublisherService.sendSimulationMessage("SIMULATION_END");
+            }
+        });
+
         return runnerService.runAsync(generatedEvModels, generatedHubSpecs, config);
     }
 
@@ -81,11 +105,16 @@ public class MatsimService {
         return runnerService.stop();
     }
 
-    public void updateChargerState(String chargerId, boolean isActive){
-        if(runnerService.isRunning()){
-            String Status = updaterService.setChargerState(runnerService.getCurrentSimulationBridge(), chargerId, isActive);
-            log.info("[MatsimService] Stato cambiato al charger: " + chargerId + "con esito: " + Status);
-        }
+    public String updateChargerState(String chargerId, boolean isActive){
+        AtomicReference<String> statusRef = new AtomicReference<>("Simulazione non in esecuzione");
+        runnerService.withCurrentSimulationBridge(bridge -> {
+            if (bridge != null) {
+                String result = updaterService.setChargerState(bridge, chargerId, isActive);
+                statusRef.set(result);
+                log.info("[MatsimService] Stato cambiato al charger: {} con esito: {}", chargerId, result);
+            }
+        });        
+        return statusRef.get();
     }
 
     // ===============================

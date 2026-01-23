@@ -1,4 +1,4 @@
-package org.springboot.service;
+package org.springboot.service.SimulationState;
 
 /**
  * Enum che rappresenta gli stati possibili della simulazione

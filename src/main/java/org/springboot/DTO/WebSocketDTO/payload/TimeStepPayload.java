@@ -4,25 +4,21 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "payload aggiornamento hub e veicoli ad ogni timestep via WebSocket")
-public class TimeStepPayload {
+public final class TimeStepPayload {
 
     private Double timestamp;
 
     @Schema(description = "List dei veicoli con i loro stati")
-    private List<VehicleStatus> vehicles;
+    private final List<VehicleStatus> vehicles;
 
     @Schema(description = "List di hub con i loro stati")
-    private List<HubStatusPayload> hubs;
-
-    // Costruttore vuoto
-    public TimeStepPayload() {
-    }
+    private final List<HubStatusPayload> hubs;
 
     // Costruttore completo
     public TimeStepPayload(Double timestamp, List<VehicleStatus> vehicles, List<HubStatusPayload> hubs) {
         this.timestamp = timestamp;
-        this.vehicles = vehicles;
-        this.hubs = hubs;
+        this.vehicles = List.copyOf(vehicles);
+        this.hubs = List.copyOf(hubs);
     }
 
     // Getter e setter
@@ -38,16 +34,8 @@ public class TimeStepPayload {
         return vehicles;
     }
 
-    public void setVehicles(List<VehicleStatus> vehicles) {
-        this.vehicles = vehicles;
-    }
-
     public List<HubStatusPayload> getHubs() {
         return hubs;
-    }
-
-    public void setHubs(List<HubStatusPayload> hubs) {
-        this.hubs = hubs;
     }
 
     // toString()

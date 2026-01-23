@@ -4,17 +4,25 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.run.OpenBerlinScenario;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import org.springboot.service.SimulationState.SimulationState;
+import org.springboot.service.SimulationState.SimulationStateListener;
+import org.springboot.service.SimulationState.SimulationStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
+/**
+ * Servizio responsabile di avviare e monitorare la simulazione.
+ * Tutto lo stato della simulazione è confinato in SimulationStatus.
+ */
 @Service
 public class SimulationRunnerService {
 
@@ -22,127 +30,130 @@ public class SimulationRunnerService {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private Future<?> currentFuture = null;
-    private SimulationState currentState = SimulationState.IDLE;
-    private Exception lastException = null;
-    private SimulationBridgeInterface currentSimulationBridge = null;
 
-    @Autowired
-    private SimulationPublisherService simulationPublisherService;
+    private final SimulationStatus status = new SimulationStatus();
 
-    /**
-     * Verifica se la simulazione è in esecuzione
-     */
-    public synchronized boolean isRunning() {
-        return currentState == SimulationState.RUNNING;
+    /* =========================================================
+       Public API
+       ========================================================= */
+    
+    public boolean isRunning() {
+        return status.getState() == SimulationState.RUNNING;
+    }
+
+    public SimulationState getCurrentState() {
+        return status.getState();
+    }
+
+    public Exception getLastException() {
+        return status.getLastException();
+    }
+
+    public void setSimulationStateListener(SimulationStateListener listener) {
+        status.setListener(listener);
     }
 
     /**
-     * Restituisce lo stato attuale della simulazione
-     */
-    public synchronized SimulationState getCurrentState() {
-        return currentState;
-    }
-
-    /**
-     * Restituisce l'ultima eccezione verificatasi
-     */
-    public synchronized Exception getLastException() {
-        return lastException;
-    }
-
-    /**
-     * Restituisce l'interfaccia di simulazione attuale
-     */
-    public synchronized SimulationBridgeInterface getCurrentSimulationBridge() {
-        if (currentState != SimulationState.RUNNING) {
-            return null;
-        }
-        return currentSimulationBridge;
-    }
-
-    /**
-     * Arresta la simulazione in esecuzione
-     */
-    public synchronized String stop() {
-        if (currentState != SimulationState.RUNNING) {
-            return "Nessuna simulazione attiva.";
-        }
-        try {
-            if (currentFuture != null) {
-                currentFuture.cancel(true);
-            }
-            currentState = SimulationState.STOPPED;
-            currentSimulationBridge = null;
-            lastException = null;
-            return "Richiesta di interruzione inviata.";
-        } catch (Exception e) {
-            log.error("Errore durante l'arresto della simulazione", e);
-            currentState = SimulationState.ERROR;
-            lastException = e;
-            return "Errore durante l'arresto: " + e.getMessage();
-        }
-    }
-
-    /**
-     * Avvia la simulazione in modalità asincrona
+     * Esegue una simulazione in background.
      */
     public synchronized String runAsync(List<EvModel> evModels, List<HubSpecDto> hubSpecs, ConfigRun config) {
-        if (currentState == SimulationState.RUNNING) {
+        if (status.getState() == SimulationState.RUNNING) {
             return "Simulazione già in esecuzione.";
         }
-        
-        // Resetta lo stato precedente
-        currentState = SimulationState.RUNNING;
-        lastException = null;
-        currentFuture = null;
 
-        currentFuture = executor.submit(() -> {
-            try {
-                runSimulation(evModels, hubSpecs, config);
-                synchronized (SimulationRunnerService.this) {
-                    currentState = SimulationState.COMPLETED;
-                    currentSimulationBridge = null;
-                    log.info("Simulazione completata con successo");
-                }
-            } catch (InterruptedException e) {
-                synchronized (SimulationRunnerService.this) {
-                    currentState = SimulationState.STOPPED;
-                    currentSimulationBridge = null;
-                    lastException = e;
-                    log.warn("Simulazione interrotta", e);
-                }
-                Thread.currentThread().interrupt();
-            } catch (Throwable t) {
-                synchronized (SimulationRunnerService.this) {
-                    currentState = SimulationState.ERROR;
-                    currentSimulationBridge = null;
-                    lastException = t instanceof Exception ? (Exception) t : new Exception(t);
-                    log.error("Errore durante l'esecuzione della simulazione", t);
-                }
-            }
-        });
+        // reset stato precedente
+        status.reset();
+        currentFuture = executor.submit(() -> createSimulationTask(evModels, hubSpecs, config));
+
         return "Simulazione avviata.";
     }
 
     /**
-     * Esegue la simulazione nel thread worker
+     * Arresta la simulazione in corso.
      */
-    private void runSimulation(
-        List<EvModel> evModels, 
-        List<HubSpecDto> hubSpecs, 
-        ConfigRun config
-    ) throws Exception {
-        OpenBerlinScenario scenarioApp = new OpenBerlinScenario().withConfigRun(config);
-        SimulationBridgeInterface Bridgeinterface = scenarioApp.SetupSimulationWithServerModels(evModels, hubSpecs);
-        
-        synchronized (this) {
-            currentSimulationBridge = Bridgeinterface;
+    public synchronized String stop() {
+        if (status.getState() != SimulationState.RUNNING) {
+            return "Nessuna simulazione attiva.";
         }
-        
-        simulationPublisherService.startPublisher(Bridgeinterface, config.publisherDirty(), config.publisherRateMs());
-        simulationPublisherService.sendSimulationMessage("SIMULATION_START");
-        scenarioApp.run();
-        simulationPublisherService.sendSimulationMessage("SIMULATION_END");
-        simulationPublisherService.stopPublisher();
+
+        try {
+            if (currentFuture != null) currentFuture.cancel(true);
+
+            // Aggiorna lo stato e notifica il listener
+            status.update(SimulationState.STOPPED, null, null, true);
+
+            return "Richiesta di interruzione inviata.";
+        } catch (Exception e) {
+            status.update(SimulationState.ERROR, null, e, true);
+            log.error("Errore durante l'arresto della simulazione", e);
+            return "Errore durante l'arresto: " + e.getMessage();
+        } 
     }
+
+    /**
+     * Accesso thread-safe al bridge con un Consumer.
+     */
+    public void withCurrentSimulationBridge(Consumer<SimulationBridgeInterface> action) {
+        SimulationBridgeInterface bridge;
+        synchronized (this) {
+            if (status.getState() != SimulationState.RUNNING || status.getBridge() == null) return;
+            bridge = status.getBridge();
+        }
+        action.accept(bridge);
+    }
+
+    /**
+     * Accesso thread-safe al bridge con un Function che restituisce un valore.
+     */
+    public <T> T mapCurrentSimulationBridge(Function<SimulationBridgeInterface, T> mapper) {
+        SimulationBridgeInterface bridge;
+        synchronized (this) {
+            if (status.getState() != SimulationState.RUNNING || status.getBridge() == null) return null;
+            bridge = status.getBridge();
+        }
+        return mapper.apply(bridge);
+    }
+
+    /* =========================================================
+       Private helper methods
+       ========================================================= */
+    private Runnable createSimulationTask(List<EvModel> evModels, List<HubSpecDto> hubSpecs, ConfigRun config) {
+        return () -> {
+            try {
+                runSimulation(evModels, hubSpecs, config);
+            } catch (InterruptedException e) {
+                handleSimulationInterruption(e);
+                Thread.currentThread().interrupt();
+            } catch (Throwable t) {
+                handleSimulationError(t);
+            }
+        };
+    }
+
+    private void runSimulation(List<EvModel> evModels, List<HubSpecDto> hubSpecs, ConfigRun config) throws InterruptedException, Exception {
+        OpenBerlinScenario scenarioApp = new OpenBerlinScenario().withConfigRun(config);
+        SimulationBridgeInterface bridge = scenarioApp.SetupSimulationWithServerModels(evModels, hubSpecs);
+
+        // Aggiorna stato RUNNING e notifica listener
+        status.update(SimulationState.RUNNING, bridge, null, true);
+        log.info("Simulazione avviata con successo");
+
+        scenarioApp.run();
+
+        // Al termine, aggiorna stato COMPLETED
+        status.update(SimulationState.COMPLETED, null, null, true);
+        log.info("Simulazione completata con successo");
+    }
+
+    private void handleSimulationInterruption(InterruptedException e) {
+        status.update(SimulationState.STOPPED, null, e, true);
+        log.warn("Simulazione interrotta", e);
+        Thread.currentThread().interrupt();
+    }
+
+    private void handleSimulationError(Throwable t) {
+        status.update(SimulationState.ERROR, null, t instanceof Exception ? (Exception) t : new Exception(t), true);
+        log.error("Errore durante l'esecuzione della simulazione", t);
+    }
+    
 }

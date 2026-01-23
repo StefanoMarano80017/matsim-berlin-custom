@@ -7,7 +7,7 @@ import org.springboot.DTO.SimulationDTO.HubListDTO;
 import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.DTO.SimulationDTO.SimulationResponseDTO;
 import org.springboot.service.MatsimService;
-import org.springboot.service.SimulationState;
+import org.springboot.service.SimulationState.SimulationState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -265,9 +265,9 @@ public class SimulationController {
             @ApiResponse(responseCode = "200", description = "Colonnina aggiornata"),
     })
     @PostMapping("/ChargerState")
-    public ResponseEntity<?> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){
-        matsimService.updateChargerState(chargerStateDTO.getChargerId(), chargerStateDTO.getIsActive());
-        return ResponseEntity.ok(null);
+    public ResponseEntity<String> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){
+        String status = matsimService.updateChargerState(chargerStateDTO.getChargerId(), chargerStateDTO.getIsActive());
+        return ResponseEntity.ok(status);
     }
 
 }

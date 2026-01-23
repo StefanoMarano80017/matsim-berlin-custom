@@ -7,7 +7,7 @@ import jakarta.validation.constraints.*;
 public class ChargerStateDTO {
 
     @NotBlank(message = "ChargerId è obbligatoria")
-    private String ChargerId;
+    private String chargerId;
 
     @NotNull(message = "isActive è obbligatorio")
     private Boolean isActive;

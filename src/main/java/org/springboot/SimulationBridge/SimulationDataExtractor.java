@@ -39,19 +39,11 @@ public class SimulationDataExtractor {
             return null;
         }
 
+        double realSimTime = simulationBridgeInterface.getCurrentSimTime();
+        payload.setTimestamp(realSimTime);
+
         // I dati sono già nel formato corretto, semplicemente ritorna
         return payload;
-    }
-
-    /**
-     * Imposta il timestamp REALE della simulazione nel payload estratto.
-     * Legge il timestep da SimulationBridgeInterface (aggiornato dai Monitoring).
-     */
-    public void setTimestamp(TimeStepPayload payload, SimulationBridgeInterface simulationBridgeInterface) {
-        if (payload != null && simulationBridgeInterface != null) {
-            double realSimTime = simulationBridgeInterface.getCurrentSimTime();
-            payload.setTimestamp(realSimTime);
-        }
     }
 
     /**

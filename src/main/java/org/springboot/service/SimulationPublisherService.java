@@ -173,20 +173,14 @@ public class SimulationPublisherService {
         try {
             // 1. Determina se è il primo snapshot
             boolean firstSnapshotToSend = isFirstSnapshot();
-            
             // 2. Estrai dati dalla simulazione
             TimeStepPayload payload = dataExtractor.extractTimeStepSnapshot(
                 simulationBridgeInterface,
                 firstSnapshotToSend
             );
-            
-            if (payload == null) {
-                return; // Nessun dato da pubblicare
-            }
 
-            // 3. Imposta il timestamp (legge il timestep REALE dal bridge, non virtuale)
-            dataExtractor.setTimestamp(payload, simulationBridgeInterface);
-            
+            if (payload == null) return; // Nessun dato da pubblicare
+
             // 4. Pubblica via WebSocket
             boolean published = wsPublisher.publishTimeStepSnapshot(payload);
             
