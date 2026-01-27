@@ -42,6 +42,10 @@ public class HubSpecDto {
         chargers.add(charger);
     }
 
+    public boolean hasCharger(String chargerId) {
+        return chargers.stream().anyMatch(c -> c.getChargerId().equals(chargerId));
+    }
+
     @Override
     public String toString() {
         return "HubSpecDto{" +

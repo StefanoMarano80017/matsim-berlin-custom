@@ -60,7 +60,6 @@ public class SimulationRunnerService {
         if (status.getState() == SimulationState.RUNNING) {
             return "Simulazione già in esecuzione.";
         }
-
         // reset stato precedente
         status.reset();
         currentFuture = executor.submit(createSimulationTask(evModels, hubSpecs, config));
@@ -77,10 +76,8 @@ public class SimulationRunnerService {
 
         try {
             if (currentFuture != null) currentFuture.cancel(true);
-
             // Aggiorna lo stato e notifica il listener
             status.update(SimulationState.STOPPED, null, null, true);
-
             return "Richiesta di interruzione inviata.";
         } catch (Exception e) {
             status.update(SimulationState.ERROR, null, e, true);

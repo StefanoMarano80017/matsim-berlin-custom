@@ -30,19 +30,8 @@ public class SimulationDataExtractor {
         if (simulationBridgeInterface == null) {
             return null;
         }
-
         // Delega a SimulationBridgeInterface l'estrazione dei dati grezzi
         TimeStepPayload payload = simulationBridgeInterface.GetTimeStepStatus(fullSnapshot);
-        
-        // Se non ci sono dati, ritorna null
-        if (payload == null) {
-            return null;
-        }
-
-        double realSimTime = simulationBridgeInterface.getCurrentSimTime();
-        payload.setTimestamp(realSimTime);
-
-        // I dati sono già nel formato corretto, semplicemente ritorna
         return payload;
     }
 

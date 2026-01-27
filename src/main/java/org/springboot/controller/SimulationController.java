@@ -4,22 +4,28 @@ import org.springboot.DTO.SimulationDTO.ChargerStateDTO;
 import org.springboot.DTO.SimulationDTO.EvFleetDto;
 import org.springboot.DTO.SimulationDTO.GenerationRequestDTO;
 import org.springboot.DTO.SimulationDTO.HubListDTO;
-import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.DTO.SimulationDTO.SimulationResponseDTO;
+import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
 import org.springboot.service.MatsimService;
 import org.springboot.service.SimulationState.SimulationState;
+import org.springboot.service.result.ChargerStateUpdateResult;
+import org.springboot.service.result.GenerationResult;
+import org.springboot.service.result.SimulationStartResult;
+import org.springboot.service.result.SimulationStopResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j(topic = "org.springboot")
 @RestController
 @RequestMapping("/api")
 public class SimulationController {
@@ -41,49 +47,54 @@ public class SimulationController {
     })
     @PostMapping("/simulation/run")
     public ResponseEntity<SimulationResponseDTO> runScenario(@Valid @RequestBody(required = false) SimulationSettingsDTO settings) {
-        try {
-            // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
-            SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
-            
-            // Controlla se la simulazione è già in esecuzione
-            if (matsimService.isSimulationRunning()) {
-                SimulationResponseDTO response = SimulationResponseDTO.error(
+        SimulationSettingsDTO finalSettings = (settings != null) ? settings : new SimulationSettingsDTO();
+        // Avvia la simulazione
+        SimulationStartResult result = matsimService.runSimulationAsync(finalSettings);
+        switch (result) {
+            case SUCCESS:
+                SimulationResponseDTO response = SimulationResponseDTO.success(
                     SimulationState.RUNNING.name(),
-                    "Simulazione già in esecuzione",
-                    null
+                    result.getMessage()
                 );
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
-            }
-
-            // Avvia la simulazione
-            String message = matsimService.runSimulationAsync(finalSettings);
-            
-            // Controlla se ci sono stati errori
-            if (message.contains("Errore")) {
-                SimulationResponseDTO response = SimulationResponseDTO.error(
+                return ResponseEntity.ok(response);
+            case FLEET_NOT_GENERATED:
+                SimulationResponseDTO NoFleetResponse = SimulationResponseDTO.error(
                     SimulationState.ERROR.name(),
-                    message,
+                    result.getMessage(),
                     null
                 );
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-
-            // Simulazione avviata con successo
-            SimulationResponseDTO response = SimulationResponseDTO.success(
-                SimulationState.RUNNING.name(),
-                "Simulazione avviata con successo"
-            );
-            log.info("[SimulationAPI] Simulazione avviata");
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("[SimulationAPI] Errore nell'avvio della simulazione", e);
-            SimulationResponseDTO response = SimulationResponseDTO.error(
-                SimulationState.ERROR.name(),
-                "Errore nell'avvio della simulazione",
-                e.getMessage()
-            );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(NoFleetResponse);
+            case HUBS_NOT_GENERATED:
+                SimulationResponseDTO NoHubResponse = SimulationResponseDTO.error(
+                    SimulationState.ERROR.name(),
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(NoHubResponse);
+            case FLEET_AND_HUBS_NOT_GENERATED:
+                SimulationResponseDTO NoHubNoFleetResponse = SimulationResponseDTO.error(
+                    SimulationState.ERROR.name(),
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(NoHubNoFleetResponse);
+            case ALREADY_RUNNING:
+                SimulationResponseDTO AlreadyResponse = SimulationResponseDTO.error(
+                    SimulationState.RUNNING.name(),
+                    SimulationStartResult.ALREADY_RUNNING.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(AlreadyResponse);
+            case ERROR:
+                SimulationResponseDTO errorResponse2 = SimulationResponseDTO.error(
+                    SimulationState.ERROR.name(),
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse2);
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error(SimulationState.ERROR.name(), "Stato sconosciuto", null));
         }
     }
 
@@ -96,45 +107,42 @@ public class SimulationController {
     })
     @PostMapping("/simulation/shutdown")
     public ResponseEntity<SimulationResponseDTO> shutdownScenario() {
-        try {
-            // Controlla se la simulazione è in esecuzione
-            SimulationState currentState = matsimService.getSimulationState();
-            
-            if (currentState != SimulationState.RUNNING) {
-                SimulationResponseDTO response = SimulationResponseDTO.error(
-                    currentState.name(),
-                    "Nessuna simulazione attiva",
-                    "Stato attuale: " + currentState.getDescription()
+        SimulationStopResult result = matsimService.stopSimulation();        
+        switch (result) {
+            case SUCCESS:
+                SimulationResponseDTO response = SimulationResponseDTO.success(
+                    "SUCCESS",
+                    result.getMessage()
                 );
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
-            }
+                /*
+                *  Richiesta mandata correttamente, ma eccezione durante lo shutdown
+                */
+                Exception lastException = matsimService.getSimulationException();
+                if (lastException != null) {
+                    response.setError(lastException.getMessage());
+                }
 
-            // Arresta la simulazione
-            String message = matsimService.stopSimulation();
-            
-            // Verifica se c'è stata un'eccezione durante l'arresto
-            Exception lastException = matsimService.getSimulationException();
-            SimulationResponseDTO response = SimulationResponseDTO.success(
-                SimulationState.STOPPED.name(),
-                message
-            );
-            
-            if (lastException != null) {
-                response.setError(lastException.getMessage());
-                log.warn("[SimulationAPI] Errore durante l'arresto: {}", lastException.getMessage());
-            }
-
-            log.info("[SimulationAPI] Richiesta di interruzione inviata");
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("[SimulationAPI] Errore nell'arresto della simulazione", e);
-            SimulationResponseDTO response = SimulationResponseDTO.error(
-                SimulationState.ERROR.name(),
-                "Errore nell'arresto della simulazione",
-                e.getMessage()
-            );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+                return ResponseEntity.ok(response);
+                
+            case NOT_RUNNING:
+                SimulationResponseDTO NoRunningResponse = SimulationResponseDTO.error(
+                    "NOT_ALLOWED",
+                    result.getMessage(),
+                    "Stato attuale: " + matsimService.getSimulationState()
+                );
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(NoRunningResponse);
+                
+            case ERROR:
+                SimulationResponseDTO errorResponse = SimulationResponseDTO.error(
+                    SimulationState.ERROR.name(),
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+                
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error(SimulationState.ERROR.name(), "Stato sconosciuto", null));
         }
     }
 
@@ -145,26 +153,15 @@ public class SimulationController {
     })
     @GetMapping("/simulation/status")
     public ResponseEntity<SimulationResponseDTO> getSimulationStatus() {
-        try {
-            SimulationState state = matsimService.getSimulationState();
-            Exception lastException = matsimService.getSimulationException();
-            
-            SimulationResponseDTO response = new SimulationResponseDTO(
-                state.name(),
-                "Stato attuale: " + state.getDescription(),
-                lastException != null ? lastException.getMessage() : null
-            );
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("[SimulationAPI] Errore nel recupero dello stato", e);
-            SimulationResponseDTO response = SimulationResponseDTO.error(
-                SimulationState.ERROR.name(),
-                "Errore nel recupero dello stato",
-                e.getMessage()
-            );
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        SimulationState state = matsimService.getSimulationState();
+        Exception lastException = matsimService.getSimulationException();
+        SimulationResponseDTO response = new SimulationResponseDTO(
+            state.name(),
+            "Stato attuale: " + state.getDescription(),
+            lastException != null ? lastException.getMessage() : null
+        );
+        
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -180,20 +177,27 @@ public class SimulationController {
     })
     @PostMapping("/fleet")
     public ResponseEntity<?> generateFleet(@Valid @RequestBody(required = false) GenerationRequestDTO request) {
-        try {
-            // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
-            GenerationRequestDTO finalRequest = (request != null) ? request : new GenerationRequestDTO();
-            String message = matsimService.generateFleet(
-                finalRequest.getCsvResourceEv(),
-                finalRequest.getNumeroVeicoli(),
-                finalRequest.getSocMedio(),
-                finalRequest.getSocStdDev()
-            );
-            log.info("[GenerationAPI] Fleet generated: {}", message);
-            return ResponseEntity.ok(matsimService.getGeneratedFleet());
-        } catch (Exception e) {
-            log.error("[GenerationAPI] Errore nella generazione della flotta", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore: " + e.getMessage());
+        GenerationRequestDTO finalRequest = (request != null) ? request : new GenerationRequestDTO();
+        GenerationResult result = matsimService.generateFleet(
+            finalRequest.getCsvResourceEv(),
+            finalRequest.getNumeroVeicoli(),
+            finalRequest.getSocMedio(),
+            finalRequest.getSocStdDev()
+        );
+        
+        switch (result) {
+            case SUCCESS:
+                EvFleetDto fleet = matsimService.getGeneratedFleet();
+                return ResponseEntity.ok(fleet);
+            case INVALID_REQUEST:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(SimulationResponseDTO.error("INVALID_REQUEST", result.getMessage(), null));           
+            case ERROR:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error("Exception ERROR", result.getMessage(), null));
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error("ERROR", "Stato sconosciuto", null));
         }
     }
 
@@ -229,15 +233,22 @@ public class SimulationController {
     })
     @PostMapping("/hub")
     public ResponseEntity<?> generateHubs(@Valid @RequestBody(required = false) GenerationRequestDTO request) {
-        try {
-            // Se il body è vuoto, usa un DTO nuovo (che ha i valori di default)
-            GenerationRequestDTO finalRequest = (request != null) ? request : new GenerationRequestDTO();
-            String message = matsimService.generateHubs(finalRequest.getCsvResourceHub());
-            log.info("[GenerationAPI] Hubs generated: {}", message);
-            return ResponseEntity.ok(matsimService.getGeneratedHubs());
-        } catch (Exception e) {
-            log.error("[GenerationAPI] Errore nella generazione degli hub", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Errore: " + e.getMessage());
+        GenerationRequestDTO finalRequest = (request != null) ? request : new GenerationRequestDTO();        
+        GenerationResult result = matsimService.generateHubs(finalRequest.getCsvResourceHub());
+        switch (result) {
+            case SUCCESS:
+                HubListDTO hubs = matsimService.getGeneratedHubs();
+                return ResponseEntity.ok(hubs);
+                
+            case INVALID_REQUEST:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(SimulationResponseDTO.error("INVALID_REQUEST", result.getMessage(), null));
+            case ERROR:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error("Exception ERROR", result.getMessage(), null));
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error("ERROR", "Stato sconosciuto", null));
         }
     }
 
@@ -263,11 +274,53 @@ public class SimulationController {
     @Operation(summary = "Aggiorna lo stato di una colonnina di un hub durante la simulazione")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Colonnina aggiornata"),
+            @ApiResponse(responseCode = "400", description = "ID colonnina non valido"),
+            @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
+            @ApiResponse(responseCode = "500", description = "Errore nell'aggiornamento")
     })
     @PostMapping("/ChargerState")
-    public ResponseEntity<String> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){
-        String status = matsimService.updateChargerState(chargerStateDTO.getChargerId(), chargerStateDTO.getIsActive());
-        return ResponseEntity.ok(status);
+    public ResponseEntity<SimulationResponseDTO> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){
+        ChargerStateUpdateResult result = matsimService.updateChargerState(
+            chargerStateDTO.getChargerId(), 
+            chargerStateDTO.getIsActive()
+        );
+        
+        switch (result) {
+            case SUCCESS:
+                SimulationResponseDTO response = SimulationResponseDTO.success(
+                    "OK",
+                    result.getMessage()
+                );
+                return ResponseEntity.ok(response);
+                
+            case SIMULATION_NOT_RUNNING:
+                SimulationResponseDTO notRunningResponse = SimulationResponseDTO.error(
+                    "SIMULATION_NOT_RUNNING",
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(notRunningResponse);
+                
+            case INVALID_CHARGER_ID:
+                SimulationResponseDTO invalidResponse = SimulationResponseDTO.error(
+                    "INVALID_REQUEST",
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(invalidResponse);
+                
+            case ERROR:
+                SimulationResponseDTO errorResponse = SimulationResponseDTO.error(
+                    "ERROR",
+                    result.getMessage(),
+                    null
+                );
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+                
+            default:
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(SimulationResponseDTO.error(SimulationState.ERROR.name(), "Stato sconosciuto", null));
+        }
     }
 
 }

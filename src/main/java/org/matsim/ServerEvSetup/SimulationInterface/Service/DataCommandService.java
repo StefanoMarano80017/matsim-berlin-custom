@@ -1,4 +1,4 @@
-package org.matsim.ServerEvSetup.SimulationInterface;
+package org.matsim.ServerEvSetup.SimulationInterface.Service;
 
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;

@@ -3,6 +3,7 @@ package org.springboot.service;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springboot.service.result.ChargerStateUpdateResult;
 import org.springframework.stereotype.Service;
 
 /*
@@ -16,17 +17,17 @@ public class SimulationUpdaterService {
     /*
     *   UPDATE STATE APIs
     */
-    public String setChargerState(SimulationBridgeInterface bridge, String chargerId, boolean isActive) {
+    public ChargerStateUpdateResult setChargerState(SimulationBridgeInterface bridge, String chargerId, boolean isActive) {
         if (bridge == null) {
-            return "Nessuna simulazione in esecuzione.";
+            return ChargerStateUpdateResult.SIMULATION_NOT_RUNNING;
         }
 
         try {
             bridge.updateChargerState(chargerId, isActive);
-            return "Stato aggiornato per charger" + chargerId;
+            return ChargerStateUpdateResult.SUCCESS;
         } catch (Exception e) {
             logger.error("Errore durante il cambio dello stato del caricatore", e);
-            return "Errore: " + e.getMessage();
+            return ChargerStateUpdateResult.ERROR;
         }
     }
 

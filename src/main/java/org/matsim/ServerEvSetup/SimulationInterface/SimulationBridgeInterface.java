@@ -8,6 +8,9 @@ import org.matsim.vehicles.Vehicle;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.CustomEvModule.Hub.HubManager;
+import org.matsim.ServerEvSetup.SimulationInterface.Service.DataCommandService;
+import org.matsim.ServerEvSetup.SimulationInterface.Service.SimulationLifecycleService;
+import org.matsim.ServerEvSetup.SimulationInterface.Service.TimeStepStatusService;
 import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
 
 public class SimulationBridgeInterface implements IterationStartsListener {
@@ -61,7 +64,9 @@ public class SimulationBridgeInterface implements IterationStartsListener {
     *    STATUS 
     */
     public TimeStepPayload GetTimeStepStatus(boolean fullSnapshot) {
-       return statusService.buildPayload(fullSnapshot);
+        TimeStepPayload payload = statusService.buildPayload(fullSnapshot);
+        payload.setTimestamp(getCurrentSimTime());
+        return payload;
     }
 
     public void resetDirty(){

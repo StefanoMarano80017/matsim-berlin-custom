@@ -1,4 +1,4 @@
-package org.matsim.ServerEvSetup.SimulationInterface;
+package org.matsim.ServerEvSetup.SimulationInterface.Service;
 
 public class SimulationLifecycleService {
 

@@ -1,4 +1,4 @@
-package org.matsim.ServerEvSetup.SimulationInterface;
+package org.matsim.ServerEvSetup.SimulationInterface.Service;
 
 import java.util.HashMap;
 import java.util.List;

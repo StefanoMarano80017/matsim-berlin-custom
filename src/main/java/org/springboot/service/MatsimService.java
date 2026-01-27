@@ -14,6 +14,10 @@ import org.springboot.service.GenerationService.ModelGenerationService;
 import org.springboot.service.GenerationService.DTO.HubSpecDto;
 import org.springboot.service.SimulationState.SimulationState;
 import org.springboot.service.SimulationState.SimulationStateListener;
+import org.springboot.service.result.ChargerStateUpdateResult;
+import org.springboot.service.result.GenerationResult;
+import org.springboot.service.result.SimulationStartResult;
+import org.springboot.service.result.SimulationStopResult;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
@@ -48,32 +52,47 @@ public class MatsimService {
     /**
      * Avvia la simulazione in background.
      */
-    public String runSimulationAsync(SimulationSettingsDTO settings) {
-        if(generatedEvModels == null || generatedHubSpecs == null){
-            String status = "Errore: ";
-            if (generatedEvModels == null) status += "flotta non generata ";
-            if (generatedHubSpecs == null) status += "hub non generati";
-            return status;
+    public SimulationStartResult runSimulationAsync(SimulationSettingsDTO settings) {
+        if(isSimulationRunning()){
+            return SimulationStartResult.ALREADY_RUNNING;
+        } 
+
+        if (generatedEvModels == null && generatedHubSpecs == null) {
+            log.error("[MatsimService] Flotta e hub non generati");
+            return SimulationStartResult.FLEET_AND_HUBS_NOT_GENERATED;
+        } else if (generatedEvModels == null) {
+            log.error("[MatsimService] Flotta non generata");
+            return SimulationStartResult.FLEET_NOT_GENERATED;
+        } else if (generatedHubSpecs == null) {
+            log.error("[MatsimService] Hub non generati");
+            return SimulationStartResult.HUBS_NOT_GENERATED;
         }
-        ConfigRun config = buildConfigRun(settings);
 
-        runnerService.setSimulationStateListener(new SimulationStateListener() {
-            @Override
-            public void onSimulationStarted(SimulationBridgeInterface bridge) {
-                simulationPublisherService.sendSimulationMessage("SIMULATION_START");
-                simulationPublisherService.startPublisher(
-                    bridge, config.publisherDirty(), config.publisherRateMs()
-                );
-            }
+        try {
+            ConfigRun config = buildConfigRun(settings);
+            runnerService.setSimulationStateListener(new SimulationStateListener() {
+                @Override
+                public void onSimulationStarted(SimulationBridgeInterface bridge) {
+                    simulationPublisherService.sendSimulationMessage("SIMULATION_START");
+                    simulationPublisherService.startPublisher(
+                        bridge, config.publisherDirty(), config.publisherRateMs()
+                    );
+                }
 
-            @Override
-            public void onSimulationEnded() {
-                simulationPublisherService.stopPublisher();
-                simulationPublisherService.sendSimulationMessage("SIMULATION_END");
-            }
-        });
+                @Override
+                public void onSimulationEnded() {
+                    simulationPublisherService.stopPublisher();
+                    simulationPublisherService.sendSimulationMessage("SIMULATION_END");
+                }
+            });
 
-        return runnerService.runAsync(generatedEvModels, generatedHubSpecs, config);
+            runnerService.runAsync(generatedEvModels, generatedHubSpecs, config);
+            log.info("[MatsimService] Simulazione avviata con successo");
+            return SimulationStartResult.SUCCESS;
+        } catch (Exception e) {
+            log.error("[MatsimService] Errore nell'avvio della simulazione", e);
+            return SimulationStartResult.ERROR;
+        }
     }
 
     /**
@@ -100,21 +119,43 @@ public class MatsimService {
     /**
     * Richiesta di interruzione della simulazione.
     */
-    public String stopSimulation() {
-        return runnerService.stop();
+    public SimulationStopResult stopSimulation() {
+        if (!isSimulationRunning()) {
+            SimulationState currentState = getSimulationState();
+            log.warn("[MatsimService] Tentativo di arresto quando simulazione non è in esecuzione. Stato attuale: {}", currentState);
+            return SimulationStopResult.NOT_RUNNING;
+        }
+
+        try {
+            runnerService.stop();
+            log.info("[MatsimService] Richiesta di interruzione inviata con successo");
+            return SimulationStopResult.SUCCESS;
+        } catch (Exception e) {
+            log.error("[MatsimService] Errore nell'arresto della simulazione", e);
+            return SimulationStopResult.ERROR;
+        }
     }
 
-    public String updateChargerState(String chargerId, boolean isActive) {
-        String result = runnerService.mapCurrentSimulationBridge(bridge -> {
-            String res = updaterService.setChargerState(bridge, chargerId, isActive);
-            log.info(
-                "[MatsimService] Stato cambiato al charger: {} con esito: {}",
-                chargerId,
-                res
-            );
-            return res;
-        });
-        return result != null ? result : "Simulazione non in esecuzione";
+    public ChargerStateUpdateResult updateChargerState(String chargerId, boolean isActive) {
+        if (!isSimulationRunning()) {
+            log.warn("[MatsimService] Tentativo di aggiornare charger quando simulazione non è in esecuzione");
+            return ChargerStateUpdateResult.SIMULATION_NOT_RUNNING;
+        }
+
+        boolean isChargerExist = this.generatedHubSpecs.stream().anyMatch(hub -> hub.hasCharger(chargerId));
+        if(isChargerExist){
+            return runnerService.mapCurrentSimulationBridge(bridge -> {
+                ChargerStateUpdateResult res = updaterService.setChargerState(bridge, chargerId, isActive);
+                log.info(
+                    "[MatsimService] Stato cambiato al charger: {} con esito: {}",
+                    chargerId,
+                    res
+                );
+                return res;
+            });
+        } else {    
+            return ChargerStateUpdateResult.INVALID_CHARGER_ID;
+        }
     }
 
     // ===============================
@@ -124,7 +165,7 @@ public class MatsimService {
      * Genera i modelli EV lato server.
      * Legge il CSV e crea EvModel puri, indipendenti da MATSim.
      */
-    public String generateFleet(
+    public GenerationResult generateFleet(
         String csvResourceEv, 
         Integer numeroVeicoli, 
         Double socMedio, 
@@ -139,11 +180,11 @@ public class MatsimService {
                 socStdDev
             );
             log.info("[GenerationAPI] Generated {} EV models", generatedEvModels.size());
-            return "Flotta generata: " + generatedEvModels.size() + " veicoli.";
+            return GenerationResult.SUCCESS;
         } catch (Exception e) {
             log.error("[GenerationAPI] Errore nella generazione della flotta", e);
             this.generatedEvModels = null;
-            throw new RuntimeException("Errore nella generazione della flotta: " + e.getMessage());
+            return GenerationResult.ERROR;
         }
     }
 
@@ -151,16 +192,16 @@ public class MatsimService {
      * Genera i modelli degli hub lato server.
      * Legge il CSV e crea HubSpecDto puri, indipendenti da MATSim.
      */
-    public String generateHubs(String csvResourceHub) {
+    public GenerationResult generateHubs(String csvResourceHub) {
         try {
             log.info("[GenerationAPI] Generating hubs from {}", csvResourceHub);
             this.generatedHubSpecs = modelGenerationService.generateHubSpecifications(new ClassPathResource(csvResourceHub));
             log.info("[GenerationAPI] Generated {} hub specifications", generatedHubSpecs.size());
-            return "Hub generati: " + generatedHubSpecs.size() + " hub.";
+            return GenerationResult.SUCCESS;
         } catch (Exception e) {
             log.error("[GenerationAPI] Errore nella generazione degli hub", e);
             this.generatedHubSpecs = null;
-            throw new RuntimeException("Errore nella generazione degli hub: " + e.getMessage());
+            return GenerationResult.ERROR;
         }
     }
 
