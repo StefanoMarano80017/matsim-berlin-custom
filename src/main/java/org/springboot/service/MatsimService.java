@@ -1,7 +1,6 @@
 package org.springboot.service;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -105,16 +104,17 @@ public class MatsimService {
         return runnerService.stop();
     }
 
-    public String updateChargerState(String chargerId, boolean isActive){
-        AtomicReference<String> statusRef = new AtomicReference<>("Simulazione non in esecuzione");
-        runnerService.withCurrentSimulationBridge(bridge -> {
-            if (bridge != null) {
-                String result = updaterService.setChargerState(bridge, chargerId, isActive);
-                statusRef.set(result);
-                log.info("[MatsimService] Stato cambiato al charger: {} con esito: {}", chargerId, result);
-            }
-        });        
-        return statusRef.get();
+    public String updateChargerState(String chargerId, boolean isActive) {
+        String result = runnerService.mapCurrentSimulationBridge(bridge -> {
+            String res = updaterService.setChargerState(bridge, chargerId, isActive);
+            log.info(
+                "[MatsimService] Stato cambiato al charger: {} con esito: {}",
+                chargerId,
+                res
+            );
+            return res;
+        });
+        return result != null ? result : "Simulazione non in esecuzione";
     }
 
     // ===============================

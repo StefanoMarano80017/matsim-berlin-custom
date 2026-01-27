@@ -48,7 +48,7 @@ public class SimulationWebSocketPublisher {
         }
 
         try {
-            publishWebSocketUpdate("TimeStepUpdate", 0.0, payload);
+            publishWebSocketUpdate("TimeStepUpdate", payload);
             return true;
         } catch (Exception e) {
             logger.error("Errore durante publishTimeStepSnapshot", e);
@@ -67,7 +67,7 @@ public class SimulationWebSocketPublisher {
         }
 
         try {
-            publishWebSocketUpdate("SimulationMessage", 0.0, message);
+            publishWebSocketUpdate("SimulationMessage", message);
         } catch (Exception e) {
             logger.error("Errore durante publishMessage", e);
         }
@@ -76,8 +76,8 @@ public class SimulationWebSocketPublisher {
     /**
      * Metodo privato: invia un aggiornamento generico via WebSocket.
      */
-    private <T> void publishWebSocketUpdate(String type, Double progress, T payload) {
-        WebSocketUpdate<T> update = new WebSocketUpdate<>(type, progress, payload, "success");
+    private <T> void publishWebSocketUpdate(String type, T payload) {
+        WebSocketUpdate<T> update = new WebSocketUpdate<>(type, payload, "success");
         try {
             wsHandler.broadcast(gson.toJson(update));
         } catch (Exception e) {

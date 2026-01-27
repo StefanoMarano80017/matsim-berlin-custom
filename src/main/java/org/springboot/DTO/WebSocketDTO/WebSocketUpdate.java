@@ -13,9 +13,6 @@ public class WebSocketUpdate<T> {
     @Schema(description = "Tipo messaggio")
     private String type; 
 
-    @Schema(description = "Progresso simulazione")
-    private double progress;
-
     @Schema(description = "Messaggio di stato opzionale")
     private String statusMessage;
 
@@ -26,9 +23,8 @@ public class WebSocketUpdate<T> {
     public WebSocketUpdate() {}
 
     // Costruttore completo
-    public WebSocketUpdate(String type, double progress, T payload, String statusMessage) {
+    public WebSocketUpdate(String type, T payload, String statusMessage) {
         this.type = type;
-        this.progress = progress;
         this.payload = payload;
         this.statusMessage = statusMessage;
     }
@@ -40,14 +36,6 @@ public class WebSocketUpdate<T> {
 
     public void setType(String type) {
         this.type = type;
-    }
-
-    public double getProgress() {
-        return progress;
-    }
-
-    public void setProgress(double progress) {
-        this.progress = progress;
     }
 
     public T getPayload() {
@@ -70,7 +58,6 @@ public class WebSocketUpdate<T> {
     public String toString() {
         return "WebSocketUpdate{" +
                 "type='" + type + '\'' +
-                ", progress=" + progress +
                 ", payload=" + payload +
                 ", statusMessage='" + statusMessage + '\'' +
                 '}';

@@ -15,10 +15,14 @@ public final class TimeStepPayload {
     private final List<HubStatusPayload> hubs;
 
     // Costruttore completo
-    public TimeStepPayload(Double timestamp, List<VehicleStatus> vehicles, List<HubStatusPayload> hubs) {
+    public TimeStepPayload(
+        Double timestamp, 
+        List<VehicleStatus> vehicles, 
+        List<HubStatusPayload> hubs
+    ) {
         this.timestamp = timestamp;
-        this.vehicles = List.copyOf(vehicles);
-        this.hubs = List.copyOf(hubs);
+        this.vehicles  = List.copyOf(vehicles);
+        this.hubs      = List.copyOf(hubs);
     }
 
     // Getter e setter
@@ -36,6 +40,18 @@ public final class TimeStepPayload {
 
     public List<HubStatusPayload> getHubs() {
         return hubs;
+    }
+
+    @Schema(description = "Timestamp formattato in hh:mm:ss")
+    public String getFormattedTime() {
+        if (timestamp == null) return null;
+        long seconds = timestamp.longValue();
+        return java.time.Duration.ofSeconds(seconds)
+                .toString()
+                .substring(2)
+                .replace("H", ":")
+                .replace("M", ":")
+                .replace("S", "");
     }
 
     // toString()

@@ -11,10 +11,14 @@ public class HubStatusPayload {
     private int occupancy;                          // numero di veicoli in carica
     private Map<String, ChargerStatus> chargers;    // stato dei charger
 
-    public HubStatusPayload() {
-    }
+    public HubStatusPayload() {}
 
-    public HubStatusPayload(String hubId, double energy, int occupancy, Map<String, ChargerStatus> chargers) {
+    public HubStatusPayload(
+        String hubId, 
+        double energy, 
+        int occupancy, 
+        Map<String, ChargerStatus> chargers
+    ) {
         this.hubId = hubId;
         this.energy = energy;
         this.occupancy = occupancy;

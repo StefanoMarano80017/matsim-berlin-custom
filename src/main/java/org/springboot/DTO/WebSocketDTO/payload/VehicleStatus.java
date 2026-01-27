@@ -5,13 +5,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "payload aggiornamento vehicle con stato e link via WebSocket")
 public class VehicleStatus {
 
-    private String vehicleId;             // riferimento al veicolo
-    private double soc;                   // stato di carica in %
-    private double kmDriven;              // chilometri percorsi
-    private double currentEnergyJoules;   // energia corrente in Joule
+    private String vehicleId;              // riferimento al veicolo
+    private double soc;                    // stato di carica in %
+    private double kmDriven;               // chilometri percorsi
+    private double currentEnergyJoules;    // energia corrente in Joule
     private String State;                  // stato del veicolo
-    private String linkId;                // opzionale: link corrente, valido se MOVING o CHARGING
-    private Double simTime;               // opzionale: tempo di simulazione relativo al link
+    private String linkId;                 // opzionale: link corrente, valido se MOVING o CHARGING
+    private Double simTime;                // opzionale: tempo di simulazione relativo al link
 
     // Costruttore vuoto
     public VehicleStatus() {}

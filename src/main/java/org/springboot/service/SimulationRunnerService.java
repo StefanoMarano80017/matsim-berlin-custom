@@ -63,8 +63,7 @@ public class SimulationRunnerService {
 
         // reset stato precedente
         status.reset();
-        currentFuture = executor.submit(() -> createSimulationTask(evModels, hubSpecs, config));
-
+        currentFuture = executor.submit(createSimulationTask(evModels, hubSpecs, config));
         return "Simulazione avviata.";
     }
 
