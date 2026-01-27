@@ -1,4 +1,4 @@
-package org.springboot.service.GenerationService.DTO;
+package org.springboot.service.generationService.DTO;
 
 import java.util.ArrayList;
 import java.util.List;

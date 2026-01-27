@@ -1,4 +1,4 @@
-package org.springboot.service.GenerationService.Parser;
+package org.springboot.service.generationService.Parser;
 
 import org.springframework.core.io.Resource;
 
@@ -12,8 +12,8 @@ import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springboot.service.GenerationService.DTO.ChargerSpecDto;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.DTO.ChargerSpecDto;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 
 /**
  * Parser CSV per hub di ricarica lato server con supporto colonnine miste.

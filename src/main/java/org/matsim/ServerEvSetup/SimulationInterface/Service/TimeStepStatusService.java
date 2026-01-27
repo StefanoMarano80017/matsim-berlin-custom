@@ -9,10 +9,10 @@ import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.CustomEvModule.Hub.ChargerUnit;
 import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;
-import org.springboot.DTO.WebSocketDTO.payload.ChargerStatus;
-import org.springboot.DTO.WebSocketDTO.payload.HubStatusPayload;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
-import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
+import org.springboot.DTO.out.WebSocketDTO.payload.ChargerStatus;
+import org.springboot.DTO.out.WebSocketDTO.payload.HubStatusPayload;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
+import org.springboot.DTO.out.WebSocketDTO.payload.VehicleStatus;
 
 public class TimeStepStatusService {
 

@@ -5,13 +5,13 @@ import org.matsim.contrib.ev.infrastructure.Charger;
 import org.matsim.core.controler.events.IterationStartsEvent;
 import org.matsim.core.controler.listener.IterationStartsListener;
 import org.matsim.vehicles.Vehicle;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
 import org.matsim.CustomEvModule.EVfleet.EvFleetManager;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.CustomEvModule.Hub.HubManager;
 import org.matsim.ServerEvSetup.SimulationInterface.Service.DataCommandService;
 import org.matsim.ServerEvSetup.SimulationInterface.Service.SimulationLifecycleService;
 import org.matsim.ServerEvSetup.SimulationInterface.Service.TimeStepStatusService;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
 
 public class SimulationBridgeInterface implements IterationStartsListener {
 
@@ -116,9 +116,9 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @param simTime The simulation time
      */
     public void handleChargingStart(
-            Id<Charger> chargerId,
-            Id<Vehicle> vehicleId,
-            double simTime
+        Id<Charger> chargerId,
+        Id<Vehicle> vehicleId,
+        double simTime
     ) {
        dataCommands.handleChargingStart(chargerId, vehicleId.toString());
     }
@@ -131,8 +131,8 @@ public class SimulationBridgeInterface implements IterationStartsListener {
      * @param energy The energy charged
      */
     public void handleChargingEnd(
-            Id<Charger> chargerId,
-            double energy
+        Id<Charger> chargerId,
+        double energy
     ) {
         dataCommands.handleChargingEnd(chargerId, energy);
     }

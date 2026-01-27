@@ -1,8 +1,8 @@
-package org.springboot.service.GenerationService.Strategy.Impl;
+package org.springboot.service.generationService.Strategy.Impl;
 
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.CustomEvModule.EVfleet.strategy.fleet.EvFleetStrategy;
-import org.springboot.service.GenerationService.Strategy.EvGenerationStrategy;
+import org.springboot.service.generationService.Strategy.EvGenerationStrategy;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 

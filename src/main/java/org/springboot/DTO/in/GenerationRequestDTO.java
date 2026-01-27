@@ -1,4 +1,4 @@
-package org.springboot.DTO.SimulationDTO;
+package org.springboot.DTO.in;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

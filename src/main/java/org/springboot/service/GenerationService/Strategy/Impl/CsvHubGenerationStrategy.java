@@ -1,8 +1,8 @@
-package org.springboot.service.GenerationService.Strategy.Impl;
+package org.springboot.service.generationService.Strategy.Impl;
 
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springboot.service.GenerationService.Parser.HubCsvParser;
-import org.springboot.service.GenerationService.Strategy.HubGenerationStrategy;
+import org.springboot.service.generationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.Parser.HubCsvParser;
+import org.springboot.service.generationService.Strategy.HubGenerationStrategy;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 

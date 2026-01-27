@@ -1,8 +1,8 @@
 package org.springboot.controller;
 
-import org.springboot.DTO.WebSocketDTO.payload.HubStatusPayload;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
-import org.springboot.DTO.WebSocketDTO.payload.VehicleStatus;
+import org.springboot.DTO.out.WebSocketDTO.payload.HubStatusPayload;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
+import org.springboot.DTO.out.WebSocketDTO.payload.VehicleStatus;
 import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;

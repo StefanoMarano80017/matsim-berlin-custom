@@ -1,9 +1,9 @@
 package org.springboot.websocket;
 
-import org.springboot.DTO.WebSocketDTO.WebSocketUpdate;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springboot.DTO.out.WebSocketDTO.WebSocketUpdate;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
 import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;

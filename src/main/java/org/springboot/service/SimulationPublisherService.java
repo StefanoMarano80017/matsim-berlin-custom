@@ -4,8 +4,8 @@ import java.time.Duration;
 import java.util.concurrent.ScheduledFuture;
 
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
-import org.springboot.SimulationBridge.SimulationDataExtractor;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
+import org.springboot.simulationBridge.SimulationDataExtractor;
 import org.springboot.websocket.SimulationWebSocketPublisher;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.support.PeriodicTrigger;

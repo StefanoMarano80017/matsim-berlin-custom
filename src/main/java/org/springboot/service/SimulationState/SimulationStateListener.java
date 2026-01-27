@@ -1,4 +1,4 @@
-package org.springboot.service.SimulationState;
+package org.springboot.service.simulationState;
 
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 

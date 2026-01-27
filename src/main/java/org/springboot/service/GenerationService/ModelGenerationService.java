@@ -1,11 +1,11 @@
-package org.springboot.service.GenerationService;
+package org.springboot.service.generationService;
 
 import org.matsim.CustomEvModule.EVfleet.EvModel;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springboot.service.GenerationService.Strategy.EvGenerationStrategy;
-import org.springboot.service.GenerationService.Strategy.HubGenerationStrategy;
-import org.springboot.service.GenerationService.Strategy.Impl.CsvEvGenerationStrategy;
-import org.springboot.service.GenerationService.Strategy.Impl.CsvHubGenerationStrategy;
+import org.springboot.service.generationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.Strategy.EvGenerationStrategy;
+import org.springboot.service.generationService.Strategy.HubGenerationStrategy;
+import org.springboot.service.generationService.Strategy.Impl.CsvEvGenerationStrategy;
+import org.springboot.service.generationService.Strategy.Impl.CsvHubGenerationStrategy;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
@@ -84,11 +84,8 @@ public class ModelGenerationService {
      * @return Lista di HubSpecDto generati
      */
     public List<HubSpecDto> generateHubSpecifications(Resource csvResource) {
-        log.info("[ModelGenerationService] Generating hub specifications using strategy: {}", 
-            hubGenerationStrategy.getStrategyName());
-
+        log.info("[ModelGenerationService] Generating hub specifications using strategy: {}", hubGenerationStrategy.getStrategyName());
         List<HubSpecDto> specs = hubGenerationStrategy.generateHubSpecifications(csvResource);
-
         log.info("[ModelGenerationService] Generated {} hub specifications", specs.size());
         return specs;
     }

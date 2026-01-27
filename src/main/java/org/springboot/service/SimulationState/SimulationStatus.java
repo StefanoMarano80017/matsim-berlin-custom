@@ -1,4 +1,4 @@
-package org.springboot.service.SimulationState;
+package org.springboot.service.simulationState;
 
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 
@@ -17,10 +17,10 @@ public class SimulationStatus {
     }
 
     public synchronized void update(
-            SimulationState newState,
-            SimulationBridgeInterface newBridge,
-            Exception exception,
-            boolean notifyListener
+        SimulationState newState,
+        SimulationBridgeInterface newBridge,
+        Exception exception,
+        boolean notifyListener
     ) {
         this.state = newState;
         this.bridge = newBridge;

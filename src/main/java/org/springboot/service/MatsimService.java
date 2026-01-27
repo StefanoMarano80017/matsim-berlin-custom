@@ -5,19 +5,19 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
-import org.springboot.DTO.SimulationDTO.SimulationSettingsDTO;
-import org.springboot.DTO.SimulationDTO.EvFleetDto;
-import org.springboot.DTO.SimulationDTO.HubDTO;
-import org.springboot.DTO.SimulationDTO.HubListDTO;
-import org.springboot.DTO.SimulationDTO.mapper.HubSpecMapper;
-import org.springboot.service.GenerationService.ModelGenerationService;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springboot.service.SimulationState.SimulationState;
-import org.springboot.service.SimulationState.SimulationStateListener;
+import org.springboot.DTO.in.SimulationSettingsDTO;
+import org.springboot.DTO.out.SimulationDTO.EvFleetDto;
+import org.springboot.DTO.out.SimulationDTO.HubDTO;
+import org.springboot.DTO.out.SimulationDTO.HubListDTO;
+import org.springboot.DTO.out.SimulationDTO.mapper.HubSpecMapper;
+import org.springboot.service.generationService.ModelGenerationService;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 import org.springboot.service.result.ChargerStateUpdateResult;
 import org.springboot.service.result.GenerationResult;
 import org.springboot.service.result.SimulationStartResult;
 import org.springboot.service.result.SimulationStopResult;
+import org.springboot.service.simulationState.SimulationState;
+import org.springboot.service.simulationState.SimulationStateListener;
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
@@ -143,19 +143,17 @@ public class MatsimService {
         }
 
         boolean isChargerExist = this.generatedHubSpecs.stream().anyMatch(hub -> hub.hasCharger(chargerId));
-        if(isChargerExist){
-            return runnerService.mapCurrentSimulationBridge(bridge -> {
-                ChargerStateUpdateResult res = updaterService.setChargerState(bridge, chargerId, isActive);
-                log.info(
-                    "[MatsimService] Stato cambiato al charger: {} con esito: {}",
-                    chargerId,
-                    res
-                );
-                return res;
-            });
-        } else {    
-            return ChargerStateUpdateResult.INVALID_CHARGER_ID;
-        }
+        if(!isChargerExist) return ChargerStateUpdateResult.INVALID_CHARGER_ID;
+        return runnerService.mapCurrentSimulationBridge(bridge -> {
+            ChargerStateUpdateResult res = updaterService.setChargerState(bridge, chargerId, isActive);
+            log.info(
+                "[MatsimService] Stato cambiato al charger: {} con esito: {}",
+                chargerId,
+                res
+            );
+            return res;
+        });
+
     }
 
     // ===============================
@@ -236,8 +234,8 @@ public class MatsimService {
     }
 
     /**
-     * Helper per costruire ConfigRun da SimulationSettingsDTO.
-     */
+    * Helper per costruire ConfigRun da SimulationSettingsDTO.
+    */
     private ConfigRun buildConfigRun(SimulationSettingsDTO settings) {
         return ConfigRun.builder()
                 .csvResourceHub(new ClassPathResource(settings.getCsvResourceHub()))

@@ -1,4 +1,4 @@
-package org.springboot.service.GenerationService.Strategy;
+package org.springboot.service.generationService.Strategy;
 
 import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.springframework.core.io.Resource;

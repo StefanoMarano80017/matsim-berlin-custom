@@ -11,10 +11,10 @@ import org.matsim.CustomEvModule.EVfleet.EvModel;
 import org.matsim.ServerEvSetup.ConfigRun.ConfigRun;
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
 import org.matsim.run.OpenBerlinScenario;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
-import org.springboot.service.SimulationState.SimulationState;
-import org.springboot.service.SimulationState.SimulationStateListener;
-import org.springboot.service.SimulationState.SimulationStatus;
+import org.springboot.service.generationService.DTO.HubSpecDto;
+import org.springboot.service.simulationState.SimulationState;
+import org.springboot.service.simulationState.SimulationStateListener;
+import org.springboot.service.simulationState.SimulationStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -151,5 +151,5 @@ public class SimulationRunnerService {
         status.update(SimulationState.ERROR, null, t instanceof Exception ? (Exception) t : new Exception(t), true);
         log.error("Errore durante l'esecuzione della simulazione", t);
     }
-    
+
 }

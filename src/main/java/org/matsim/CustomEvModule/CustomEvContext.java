@@ -11,7 +11,7 @@ import org.matsim.vehicles.VehicleType;
 import org.matsim.vehicles.VehicleUtils;
 import org.matsim.vehicles.Vehicles;
 import org.matsim.vehicles.VehiclesFactory;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 import org.springframework.core.io.Resource;
 import org.matsim.CustomEvModule.Hub.ChargingHub;
 import org.matsim.CustomEvModule.Hub.HubManager;

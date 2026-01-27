@@ -9,8 +9,8 @@ import org.matsim.contrib.ev.infrastructure.ChargingInfrastructureSpecification;
 import org.matsim.contrib.ev.infrastructure.ImmutableChargerSpecification;
 import org.matsim.utils.objectattributes.attributable.Attributes;
 import org.matsim.utils.objectattributes.attributable.AttributesImpl;
-import org.springboot.service.GenerationService.DTO.ChargerSpecDto;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.DTO.ChargerSpecDto;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 import org.springframework.core.io.Resource;
 
 import com.google.common.collect.ImmutableList;

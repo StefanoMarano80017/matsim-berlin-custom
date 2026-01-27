@@ -1,7 +1,7 @@
-package org.springboot.SimulationBridge;
+package org.springboot.simulationBridge;
 
 import org.matsim.ServerEvSetup.SimulationInterface.SimulationBridgeInterface;
-import org.springboot.DTO.WebSocketDTO.payload.TimeStepPayload;
+import org.springboot.DTO.out.WebSocketDTO.payload.TimeStepPayload;
 import org.springframework.stereotype.Component;
 
 /**

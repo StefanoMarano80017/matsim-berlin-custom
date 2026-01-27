@@ -32,7 +32,7 @@ import org.matsim.core.router.costcalculators.TravelDisutilityFactory;
 import org.matsim.core.router.util.TravelTime;
 import org.matsim.core.scenario.ScenarioUtils;
 import org.matsim.simwrapper.SimWrapperModule;
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 /*
 *  Custom Libs
 */

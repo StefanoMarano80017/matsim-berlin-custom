@@ -1,6 +1,6 @@
-package org.springboot.service.GenerationService.Strategy;
+package org.springboot.service.generationService.Strategy;
 
-import org.springboot.service.GenerationService.DTO.HubSpecDto;
+import org.springboot.service.generationService.DTO.HubSpecDto;
 import org.springframework.core.io.Resource;
 
 import java.util.List;

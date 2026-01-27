@@ -1,4 +1,4 @@
-package org.springboot.service.GenerationService.DTO;
+package org.springboot.service.generationService.DTO;
 
 /**
  * Modello di dominio lato server per un charger.
