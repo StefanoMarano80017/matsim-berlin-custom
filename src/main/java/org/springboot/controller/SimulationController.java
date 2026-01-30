@@ -61,14 +61,13 @@ public class SimulationController {
         return buildResponse(status, message, null, null);
     }
 
-
     // --- Endpoint di Avvio ---
     @Operation(summary = "Esegue la simulazione con parametri opzionali")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Simulazione avviata con successo"),
-            @ApiResponse(responseCode = "409", description = "Simulazione già in esecuzione"),
-            @ApiResponse(responseCode = "400", description = "Flotta o hub non generati"),
-            @ApiResponse(responseCode = "500", description = "Errore interno del server")
+        @ApiResponse(responseCode = "200", description = "Simulazione avviata con successo"),
+        @ApiResponse(responseCode = "409", description = "Simulazione già in esecuzione"),
+        @ApiResponse(responseCode = "400", description = "Flotta o hub non generati"),
+        @ApiResponse(responseCode = "500", description = "Errore interno del server")
     })
     @PostMapping("/simulation/run")
     public ResponseEntity<SimulationResponseDTO<Void>> runScenario(@Valid @RequestBody(required = false) SimulationSettingsDTO settings) {
@@ -92,9 +91,9 @@ public class SimulationController {
     // --- Endpoint di Arresto ---
     @Operation(summary = "Arresta la simulazione")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Richiesta di shutdown inviata con successo"),
-            @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
-            @ApiResponse(responseCode = "500", description = "Errore durante l'arresto")
+        @ApiResponse(responseCode = "200", description = "Richiesta di shutdown inviata con successo"),
+        @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
+        @ApiResponse(responseCode = "500", description = "Errore durante l'arresto")
     })
     @PostMapping("/simulation/shutdown")
     public ResponseEntity<SimulationResponseDTO<Void>> shutdownScenario() {
@@ -145,9 +144,9 @@ public class SimulationController {
      */
     @Operation(summary = "Genera la flotta EV lato server")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "Flotta generata con successo"),
-            @ApiResponse(responseCode = "400", description = "Richiesta invalida"),
-            @ApiResponse(responseCode = "500", description = "Errore nella generazione")
+        @ApiResponse(responseCode = "201", description = "Flotta generata con successo"),
+        @ApiResponse(responseCode = "400", description = "Richiesta invalida"),
+        @ApiResponse(responseCode = "500", description = "Errore nella generazione")
     })
     @PostMapping("/fleet")
     public ResponseEntity<SimulationResponseDTO<EvFleetDto>> generateFleet(@Valid @RequestBody(required = false) GenerationRequestDTO request) {
@@ -178,9 +177,9 @@ public class SimulationController {
      */
     @Operation(summary = "Restituisce i modelli EV generati lato server")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Flotta generata disponibile"),
-            @ApiResponse(responseCode = "204", description = "Nessuna flotta generata"),
-            @ApiResponse(responseCode = "500", description = "Errore nel recupero dati")
+        @ApiResponse(responseCode = "200", description = "Flotta generata disponibile"),
+        @ApiResponse(responseCode = "204", description = "Nessuna flotta generata"),
+        @ApiResponse(responseCode = "500", description = "Errore nel recupero dati")
     })
     @GetMapping("/fleet")
     public ResponseEntity<SimulationResponseDTO<EvFleetDto>> getGeneratedFleet() {
@@ -198,9 +197,9 @@ public class SimulationController {
      */
     @Operation(summary = "Genera gli hub di ricarica lato server")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Hub generati con successo"),
-            @ApiResponse(responseCode = "400", description = "Richiesta invalida"),
-            @ApiResponse(responseCode = "500", description = "Errore nella generazione")
+        @ApiResponse(responseCode = "200", description = "Hub generati con successo"),
+        @ApiResponse(responseCode = "400", description = "Richiesta invalida"),
+        @ApiResponse(responseCode = "500", description = "Errore nella generazione")
     })
     @PostMapping("/hub")
     public ResponseEntity<SimulationResponseDTO<HubListDTO>> generateHubs(@Valid @RequestBody(required = false) GenerationRequestDTO request) {
@@ -225,9 +224,9 @@ public class SimulationController {
      */
     @Operation(summary = "Restituisce i modelli degli hub generati lato server")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Hub generati disponibili"),
-            @ApiResponse(responseCode = "204", description = "Nessun hub generato"),
-            @ApiResponse(responseCode = "500", description = "Errore nel recupero dati")
+        @ApiResponse(responseCode = "200", description = "Hub generati disponibili"),
+        @ApiResponse(responseCode = "204", description = "Nessun hub generato"),
+        @ApiResponse(responseCode = "500", description = "Errore nel recupero dati")
     })
     @GetMapping("/hub")
     public ResponseEntity<SimulationResponseDTO<HubListDTO>> getGeneratedHubs() {
@@ -240,10 +239,10 @@ public class SimulationController {
 
     @Operation(summary = "Aggiorna lo stato di una colonnina di un hub durante la simulazione")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Colonnina aggiornata"),
-            @ApiResponse(responseCode = "400", description = "ID colonnina non valido"),
-            @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
-            @ApiResponse(responseCode = "500", description = "Errore nell'aggiornamento")
+        @ApiResponse(responseCode = "200", description = "Colonnina aggiornata"),
+        @ApiResponse(responseCode = "400", description = "ID colonnina non valido"),
+        @ApiResponse(responseCode = "503", description = "Simulazione non in esecuzione"),
+        @ApiResponse(responseCode = "500", description = "Errore nell'aggiornamento")
     })
     @PostMapping("/ChargerState")
     public ResponseEntity<SimulationResponseDTO<ChargerStateUpdateResult>> setChargerState(@Valid @RequestBody ChargerStateDTO chargerStateDTO){

@@ -1,0 +1,53 @@
+{
+  "type": "TimeStepUpdate",
+  "statusMessage": "Simulation running",
+  "payload": {
+    "timestamp": 3661,
+    "formattedTime": "01:01:01",
+    "vehicles": [
+      {
+        "vehicleId": "EV_01",
+        "soc": 72.5,
+        "kmDriven": 128.3,
+        "currentEnergyJoules": 18400000,
+        "state": "moving",
+        "linkId": "link_12",
+        "simTime": 3661
+      },
+      {
+        "vehicleId": "EV_02",
+        "soc": 45.2,
+        "kmDriven": 64.7,
+        "currentEnergyJoules": 11500000,
+        "state": "charging",
+        "linkId": "hub_A",
+        "simTime": 3661
+      }
+    ],
+    "hubs": [
+      {
+        "hubId": "HUB_A",
+        "energy": 52000.0,
+        "occupancy": 1,
+        "chargers": {
+          "hub_a_col_1": {
+            "chargerId": "hub_a_col_1",
+            "occupied": true,
+            "active": true,
+            "energy": 32000.0,
+            "charging_energy": 7200.0,
+            "evId": "EV_02"
+          },
+          "hub_a_col_2": {
+            "chargerId": "hub_a_col_2",
+            "occupied": false,
+            "active": true,
+            "energy": 20000.0,
+            "charging_energy": 0.0,
+            "evId": null
+          }
+        }
+      }
+    ]
+  }
+}
