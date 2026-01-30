@@ -1,5 +1,6 @@
 package org.matsim.ServerEvSetup.SimulationInterface.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,12 +53,12 @@ public class TimeStepStatusService {
     /*  ================================================
     *   MAPPERS
         ================================================ */
-
     private VehicleStatus mapVehicle(EvModel v) {
         return new VehicleStatus(
                 v.getVehicleId().toString(),
                 v.getCurrentSoc(),
                 v.getDistanceTraveledKm(),
+                new ArrayList<>(List.of(v.getCoordX(), v.getCoordY())),
                 v.getCurrentEnergyJoules(),
                 v.getState() != null ? v.getState().toString() : "NULL"
         );
@@ -88,7 +89,8 @@ public class TimeStepStatusService {
                 hub.getId(),
                 hub.getTotalEnergy(),
                 hub.getOccupancy(),
-                chargers
+                chargers,         
+                new ArrayList<>(List.of(hub.getCoordX(), hub.getCoordY()))
         );
     }
 

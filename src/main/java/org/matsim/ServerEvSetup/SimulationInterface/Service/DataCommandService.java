@@ -43,6 +43,13 @@ public class DataCommandService {
         evFleetManager.getFleet().values().forEach(EvModel::resetDirty);
     }
 
+    public void updateEvPosition(Id<Vehicle> vehicleId, double x, double y) {
+        EvModel ev = evFleetManager.getVehicle(vehicleId);
+        if(ev != null) {
+            ev.setCoord(x, y);
+        }
+    }
+
     /*
     *  Hub interface
     */

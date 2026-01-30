@@ -2,8 +2,10 @@ package org.matsim.CustomEvModule.Hub;
 
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.infrastructure.Charger;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +18,9 @@ public class ChargingHub {
 
     private final String hubId;
     private final Id<Link> linkId;
-    
+    private double coordX;
+    private double coordY;    
+
     /**
      * Mappa charger ID -> ChargerUnit
      * Contiene tutte le unità di ricarica dell'hub con i loro stati
@@ -26,13 +30,23 @@ public class ChargingHub {
     private double totalCumulativeEnergy = 0.0;
     private boolean dirty = true;
 
-    public ChargingHub(String hubId, Id<Link> linkId) {
+    public ChargingHub(String hubId, Id<Link> linkId, double coordX, double coordY) {
         this.hubId = hubId;
         this.linkId = linkId;
+        this.coordX = coordX;
+        this.coordY = coordY;
     }
 
     public String getId() {
         return hubId;
+    }
+
+    public double getCoordX() {
+        return coordX;
+    }
+
+    public double getCoordY() {
+        return coordY;
     }
 
     // -------------------- MUTATOR METHODS --------------------

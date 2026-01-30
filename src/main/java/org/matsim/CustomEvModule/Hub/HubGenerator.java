@@ -1,5 +1,6 @@
 package org.matsim.CustomEvModule.Hub;
 
+import org.matsim.CustomEvModule.Utils.CoordinateConverter;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -63,7 +64,8 @@ public class HubGenerator {
                     continue;
                 }
 
-                ChargingHub hub = new ChargingHub(hubId, Id.createLinkId(linkId));
+                double[] latLon = CoordinateConverter.toLatLon(link.getToNode().getCoord().getX(), link.getToNode().getCoord().getY());
+                ChargingHub hub = new ChargingHub(hubId, Id.createLinkId(linkId), latLon[0], latLon[1]);
 
                 for (int i = 0; i < nColonnine; i++) {
                     String chargerIdStr = hubId + "_col" + (i + 1);

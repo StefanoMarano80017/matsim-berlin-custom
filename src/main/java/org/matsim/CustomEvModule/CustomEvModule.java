@@ -3,6 +3,7 @@ package org.matsim.CustomEvModule;
 *  Standard libs
 */
 import org.matsim.api.core.v01.Id;
+import org.matsim.api.core.v01.network.Network;
 import org.matsim.contrib.ev.charging.ChargingPower;
 import org.matsim.contrib.ev.charging.FastThenSlowCharging;
 import org.matsim.contrib.ev.discharging.AuxEnergyConsumption;
@@ -47,6 +48,7 @@ public class CustomEvModule extends AbstractModule {
     private final EvFleetManager                      evFleetManager;
     private final SimulationBridgeInterface           bridge;
     private final ChargingInfrastructureSpecification infraSpec;
+    private final Network network;
 
     private final ConfigRun config;
     private final boolean   debug_link;
@@ -57,12 +59,14 @@ public class CustomEvModule extends AbstractModule {
         HubManager hubManager,
         EvFleetManager evFleetManager,
         ChargingInfrastructureSpecification infraSpec,
+        Network network,
         ConfigRun config
     ) {
         this.bridge = bridge;
         this.hubManager = hubManager;
         this.evFleetManager = evFleetManager;
         this.infraSpec = infraSpec;
+        this.network = network;
         this.config = config;
         this.debug_link = config.isDebugLink();
         this.realtime = config.isRealTime();
@@ -89,7 +93,7 @@ public class CustomEvModule extends AbstractModule {
         /*
         *   Monitor dello stato del veicolo
         */
-        VehicleStatusMonitor vehicleStatusMonitor = new VehicleStatusMonitor(bridge);
+        VehicleStatusMonitor vehicleStatusMonitor = new VehicleStatusMonitor(bridge, network);
         addEventHandlerBinding().toInstance(vehicleStatusMonitor);
         /*
         *   Modello di consumo del SoC

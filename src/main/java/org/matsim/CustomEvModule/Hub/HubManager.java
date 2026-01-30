@@ -1,5 +1,6 @@
 package org.matsim.CustomEvModule.Hub;
 
+import org.matsim.CustomEvModule.Utils.CoordinateConverter;
 import org.matsim.api.core.v01.Id;
 import org.matsim.api.core.v01.network.Link;
 import org.matsim.api.core.v01.network.Network;
@@ -87,7 +88,8 @@ public class HubManager {
             }
 
             // Crea il ChargingHub
-            ChargingHub hub = new ChargingHub(hubId, linkId);
+            double[] latLon = CoordinateConverter.toLatLon(link.getToNode().getCoord().getX(), link.getToNode().getCoord().getY());
+            ChargingHub hub = new ChargingHub(hubId, linkId, latLon[0], latLon[1]);
 
             // Raccogli i tipi di charger nel hub (per supportare colonnine miste)
             Set<String> hubChargerTypes = new HashSet<>();

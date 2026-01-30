@@ -1,5 +1,7 @@
 package org.springboot.DTO.out.WebSocketDTO.payload;
 
+import java.util.ArrayList;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "payload aggiornamento vehicle con stato e link via WebSocket")
@@ -10,6 +12,7 @@ public class VehicleStatus {
     private double kmDriven;               // chilometri percorsi
     private double currentEnergyJoules;    // energia corrente in Joule
     private String State;                  // stato del veicolo
+    private ArrayList <Double> position;   // posizione del veicolo [x, y]
     private String linkId;                 // opzionale: link corrente, valido se MOVING o CHARGING
     private Double simTime;                // opzionale: tempo di simulazione relativo al link
 
@@ -21,16 +24,18 @@ public class VehicleStatus {
         String vehicleId,
         double soc,
         double kmDriven,
+        ArrayList<Double> position,
         double currentEnergyJoules,
         String State
     ) {
         this.vehicleId = vehicleId;
         this.soc = soc;
         this.kmDriven = kmDriven;
+        this.position = position;
         this.currentEnergyJoules = currentEnergyJoules;
         this.State = State;
         this.linkId = null;
-        this.simTime = null;
+        this.simTime = null;    
     }
 
     // Costruttore completo con link (per MOVING o CHARGING)
@@ -69,6 +74,9 @@ public class VehicleStatus {
     public double getKmDriven() { return kmDriven; }
     public void setKmDriven(double kmDriven) { this.kmDriven = kmDriven; }
 
+    public ArrayList<Double> getPosition() { return position; }
+    public void setPosition(ArrayList<Double> position) { this.position = position; }
+
     public double getCurrentEnergyJoules() { return currentEnergyJoules; }
     public void setCurrentEnergyJoules(double currentEnergyJoules) { this.currentEnergyJoules = currentEnergyJoules; }
 
@@ -104,6 +112,7 @@ public class VehicleStatus {
                 "vehicleId='" + vehicleId + '\'' +
                 ", soc=" + soc +
                 ", kmDriven=" + kmDriven +
+                ", position=" + position +
                 ", currentEnergyJoules=" + currentEnergyJoules +
                 ", State=" + State +
                 ", linkId='" + linkId + '\'' +

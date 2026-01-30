@@ -41,7 +41,9 @@ public class EvModel {
 
     private double distanceTraveledKm;   
     private State state;                 
-    private String linkId;               
+    private String linkId;        
+    private double coordX;
+    private double coordY;       
 
     // --- Dirty flag per delta WebSocket ---
     private boolean dirty = false;
@@ -149,6 +151,14 @@ public class EvModel {
         }
     }
 
+    public void setCoord(double x, double y) {
+        if (this.coordX != x || this.coordY != y) {
+            this.coordX = x;
+            this.coordY = y;
+            this.dirty = true;
+        }
+    }
+
     // --- Dirty flag ---
     public boolean isDirty() {
         return dirty;
@@ -188,6 +198,8 @@ public class EvModel {
     public double getDistanceTraveledKm()       { return distanceTraveledKm; }
     public State getState()                     { return state; }
     public String getLinkId()                   { return linkId; }
+    public double getCoordX()                   { return coordX; }
+    public double getCoordY()                   { return coordY; }
 
     // --- Autonomia stimata ---
     public double getEstimatedRemainingRangeKm() {

@@ -8,9 +8,6 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializer;
-
 /**
  * Responsabilità: Pubblicazione dati via WebSocket.
  * 
@@ -30,10 +27,9 @@ public class SimulationWebSocketPublisher {
     public SimulationWebSocketPublisher(SimulationWebSocketHandler wsHandler) {
         this.wsHandler = wsHandler;
         // Configura Gson per arrotondare i Double a 2 decimali
-        this.gson = new GsonBuilder().registerTypeAdapter(
-                Double.class,
-                    (JsonSerializer<Double>) (src, typeOfSrc, context) -> new JsonPrimitive(Math.round(src * 100) / 100.0)
-                ).create();
+        this.gson = new GsonBuilder()
+                        .setPrettyPrinting() // opzionale, se vuoi JSON leggibile
+                        .create();
     }
 
     /**

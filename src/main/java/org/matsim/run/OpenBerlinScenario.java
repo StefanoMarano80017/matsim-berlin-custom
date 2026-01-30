@@ -146,6 +146,7 @@ public class OpenBerlinScenario extends MATSimApplication {
             context.getHubManager(),
             context.getEvFleetManager(),
             context.getInfraSpec(),
+            scenario.getNetwork(),
             configRun
         );
 

@@ -16,8 +16,8 @@ import org.matsim.ServerEvSetup.SimulationInterface.Service.TimeStepStatusServic
 public class SimulationBridgeInterface implements IterationStartsListener {
 
     private final SimulationLifecycleService lifecycle;
-    private final TimeStepStatusService statusService;
-    private final DataCommandService dataCommands;
+    private final TimeStepStatusService      statusService;
+    private final DataCommandService         dataCommands;
     
     public SimulationBridgeInterface(
         EvFleetManager evFleetManager,
@@ -156,6 +156,9 @@ public class SimulationBridgeInterface implements IterationStartsListener {
         dataCommands.updateEnergyDelivering();
     }
 
-    
+    public void updateEvPosition(Id<Vehicle> vehicleId, double x, double y) {
+        dataCommands.updateEvPosition(vehicleId, x, y);
+    }
+
 }
 

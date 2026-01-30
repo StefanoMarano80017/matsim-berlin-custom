@@ -1,6 +1,8 @@
 package org.springboot.DTO.out.WebSocketDTO.payload;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.ArrayList;
 import java.util.Map;
 
 @Schema(description = "payload aggiornamento hub via WebSocket")
@@ -10,6 +12,7 @@ public class HubStatusPayload {
     private double energy;                          // energia totale consumata dall’hub
     private int occupancy;                          // numero di veicoli in carica
     private Map<String, ChargerStatus> chargers;    // stato dei charger
+    private ArrayList<Double> position;             // [lat, lon] della posizione dell'hub
 
     public HubStatusPayload() {}
 
@@ -17,12 +20,14 @@ public class HubStatusPayload {
         String hubId, 
         double energy, 
         int occupancy, 
-        Map<String, ChargerStatus> chargers
+        Map<String, ChargerStatus> chargers,
+        ArrayList<Double> position
     ) {
         this.hubId = hubId;
         this.energy = energy;
         this.occupancy = occupancy;
         this.chargers = chargers;
+        this.position = position;
     }
 
     public String getHubId() {
@@ -55,6 +60,14 @@ public class HubStatusPayload {
 
     public void setChargers(Map<String, ChargerStatus> chargers) {
         this.chargers = chargers;
+    }
+
+    public ArrayList<Double> getPosition() {
+        return position;
+    }
+
+    public void setPosition(ArrayList<Double> position) {
+        this.position = position;
     }
 
     @Override
